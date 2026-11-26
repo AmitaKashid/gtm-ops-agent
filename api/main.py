@@ -4,6 +4,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from api.middleware.logging import RequestLoggingMiddleware
 from api.routers import crm
 
 
@@ -12,6 +13,8 @@ app = FastAPI(
     description="API for sales and business operations workflows.",
     version="0.1.0",
 )
+
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(crm.router)
 
