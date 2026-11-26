@@ -859,7 +859,28 @@ function showLoading(id) {
 }
 
 function showError(id, msg) {
-  document.getElementById(id).innerHTML = `<div class="error-msg">❌ ${msg}</div>`;
+  const container = document.getElementById(id);
+  const error = document.createElement('div');
+  error.className = 'error-msg';
+  error.textContent = `❌ ${msg}`;
+  container.replaceChildren(error);
+}
+
+async function readResponse(response) {
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`API returned HTTP ${response.status}.`);
+  }
+  if (data.error) {
+    throw new Error(`Workflow error: ${data.error}`);
+  }
+  return data;
+}
+
+function describeError(error) {
+  return error instanceof TypeError
+    ? 'Could not reach the API. Check that it is running and that the API URL is correct.'
+    : error.message;
 }
 
 function scoreColor(score) {
@@ -886,7 +907,7 @@ async function analyzeLead() {
         source: document.getElementById('lead-source').value
       })
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     document.getElementById('lead-result').innerHTML = `
       <div class="result-card">
         <div class="result-header">
@@ -908,7 +929,7 @@ async function analyzeLead() {
           <div class="result-text" style="margin-top:8px;">${d.draft_email_body || '—'}</div>
         </div>
       </div>`;
-  } catch(e) { showError('lead-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('lead-result', describeError(e)); }
 }
 
 async function triageEmail() {
@@ -927,7 +948,7 @@ async function triageEmail() {
         body: body
       })
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     const classColors = {sales:'badge-high', support:'badge-medium', partnership:'badge-info', spam:'badge-error', finance:'badge-medium'};
     document.getElementById('email-result').innerHTML = `
       <div class="result-card">
@@ -950,7 +971,7 @@ async function triageEmail() {
           <div class="result-text" style="margin-top:8px;">${d.draft_reply_body || '—'}</div>
         </div>
       </div>`;
-  } catch(e) { showError('email-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('email-result', describeError(e)); }
 }
 
 async function analyzeMeeting() {
@@ -969,7 +990,7 @@ async function analyzeMeeting() {
         duration_minutes: parseInt(document.getElementById('meeting-duration').value) || null
       })
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     document.getElementById('meeting-result').innerHTML = `
       <div class="result-card">
         <div class="result-header">
@@ -990,7 +1011,7 @@ async function analyzeMeeting() {
         ${d.decisions_made ? `<div style="margin-top:16px;"><div class="result-label">Decisions Made</div><div class="result-text">${d.decisions_made}</div></div>` : ''}
         ${d.blockers_identified ? `<div style="margin-top:16px;"><div class="result-label">Blockers</div><div class="result-text">${d.blockers_identified}</div></div>` : ''}
       </div>`;
-  } catch(e) { showError('meeting-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('meeting-result', describeError(e)); }
 }
 
 async function scanCRM() {
@@ -1009,7 +1030,7 @@ async function scanCRM() {
         scan_date: today
       })
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     document.getElementById('crm-result').innerHTML = `
       <div class="result-card">
         <div class="result-header">
@@ -1026,7 +1047,7 @@ async function scanCRM() {
         <div class="result-label">Scan Summary</div>
         <div class="result-text">${d.scan_summary || '—'}</div>
       </div>`;
-  } catch(e) { showError('crm-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('crm-result', describeError(e)); }
 }
 
 async function scanCompetitors() {
@@ -1044,7 +1065,7 @@ async function scanCompetitors() {
         report_date: today
       })
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     document.getElementById('comp-result').innerHTML = `
       <div class="result-card">
         <div class="result-header">
@@ -1060,7 +1081,7 @@ async function scanCompetitors() {
         <div class="result-label">Report Summary</div>
         <div class="result-text">${d.report_summary || d.slack_report || '—'}</div>
       </div>`;
-  } catch(e) { showError('comp-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('comp-result', describeError(e)); }
 }
 
 async function submitHROnboarding() {
@@ -1073,7 +1094,7 @@ async function submitHROnboarding() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({onboarding_request: request})
     });
-    const d = await res.json();
+    const d = await readResponse(res);
     document.getElementById('hr-result').innerHTML = `
       <div class="result-card">
         <div class="result-header">
@@ -1103,7 +1124,7 @@ async function submitHROnboarding() {
           ${d.approval_sent ? "Approval notification sent." : "No Slack approval notification was sent."} Approval is not verified by the API.
         </div>
       </div>`;
-  } catch(e) { showError('hr-result', 'Failed to connect to API. Check the URL above.'); }
+  } catch(e) { showError('hr-result', describeError(e)); }
 }
 
 // Init
