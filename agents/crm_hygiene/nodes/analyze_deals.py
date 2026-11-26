@@ -42,11 +42,11 @@ REQUIRED_FIELDS = [
 
 
 def calculate_days_inactive(
-    last_contact_date: str
+    last_contact_date: str, reference_date: date
 ) -> int:
     """
     Calculates how many days since last contact.
-    Returns 0 if date is invalid or missing.
+    Returns 999 if the date is invalid or missing.
     """
     if not last_contact_date:
         return 999  # treat missing date as very stale
@@ -55,8 +55,7 @@ def calculate_days_inactive(
         last_contact = datetime.strptime(
             last_contact_date, "%Y-%m-%d"
         ).date()
-        today = date.today()
-        return (today - last_contact).days
+        return (reference_date - last_contact).days
     except ValueError:
         logger.warning(
             f"Invalid date format: {last_contact_date}"
@@ -65,7 +64,7 @@ def calculate_days_inactive(
 
 
 def calculate_days_in_stage(
-    stage_changed_date: str
+    stage_changed_date: str, reference_date: date
 ) -> int:
     """
     Calculates how many days deal has been
@@ -78,8 +77,7 @@ def calculate_days_in_stage(
         stage_date = datetime.strptime(
             stage_changed_date, "%Y-%m-%d"
         ).date()
-        today = date.today()
-        return (today - stage_date).days
+        return (reference_date - stage_date).days
     except ValueError:
         return 0
 
@@ -131,6 +129,7 @@ def analyze_deals(state: CRMState) -> CRMState:
         return state
 
     deals = state["raw_deals"]
+    reference_date = date.fromisoformat(state["scan_date"])
 
     logger.info(
         f"[{state.get('request_id')}] "
@@ -150,7 +149,7 @@ def analyze_deals(state: CRMState) -> CRMState:
 
         # Check 1 — Stale deal
         days_inactive = calculate_days_inactive(
-            deal.get("last_contact_date")
+            deal.get("last_contact_date"), reference_date
         )
 
         if days_inactive >= STALE_DAYS_THRESHOLD:
@@ -185,7 +184,7 @@ def analyze_deals(state: CRMState) -> CRMState:
 
         # Check 3 — Stuck deal
         days_in_stage = calculate_days_in_stage(
-            deal.get("stage_changed_date")
+            deal.get("stage_changed_date"), reference_date
         )
 
         if days_in_stage >= STUCK_DAYS_THRESHOLD:

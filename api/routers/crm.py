@@ -13,8 +13,9 @@ Called by:
 
 import logging
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Dict
 from agents.crm_hygiene.graph import crm_hygiene_graph
 
@@ -50,6 +51,18 @@ class CRMRequest(BaseModel):
     """
     deals: List[DealInput]
     scan_date: Optional[str] = None
+
+    @field_validator("scan_date")
+    @classmethod
+    def validate_scan_date(cls, value: Optional[str]) -> Optional[str]:
+        if value is not None:
+            try:
+                parsed = datetime.strptime(value, "%Y-%m-%d")
+                if parsed.strftime("%Y-%m-%d") != value:
+                    raise ValueError
+            except ValueError:
+                raise ValueError("scan_date must be a valid YYYY-MM-DD date")
+        return value
 
 
 class CRMResponse(BaseModel):
