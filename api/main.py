@@ -5,7 +5,7 @@ load_dotenv()
 from fastapi import FastAPI
 from pydantic import BaseModel
 from api.middleware.logging import RequestLoggingMiddleware
-from api.routers import crm, leads, emails, meetings
+from api.routers import crm, leads, emails, meetings, competitors
 
 
 app = FastAPI(
@@ -20,6 +20,7 @@ app.include_router(crm.router)
 app.include_router(leads.router)
 app.include_router(emails.router)
 app.include_router(meetings.router)
+app.include_router(competitors.router)
 
 
 class HealthResponse(BaseModel):
