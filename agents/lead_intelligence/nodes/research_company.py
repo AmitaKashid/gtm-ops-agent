@@ -203,17 +203,9 @@ async def research_company(state: LeadState) -> LeadState:
             f"size={state['company_size']}"
         )
 
-    except Exception as e:
-        # Research failed — log but don't stop
-        # We can still score with partial data
-        logger.error(
-            f"[{state.get('request_id')}] "
-            f"Node 2: Research failed — {str(e)}"
-        )
-        state["research_completed"] = False
-        state["research_summary"] = (
-            f"Research unavailable for "
-            f"{state['company_name']}"
-        )
+    except Exception:
+        logger.exception("[%s] %s failed", state.get("request_id"), "Company research")
+        state["error"] = "Company research failed; review provider configuration and logs."
+        state["completed"] = False
 
     return state

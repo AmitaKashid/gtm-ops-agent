@@ -278,24 +278,9 @@ async def draft_email(state: LeadState) -> LeadState:
             f"subject='{state['draft_email_subject']}'"
         )
 
-    except Exception as e:
-        logger.error(
-            f"[{state.get('request_id')}] "
-            f"Node 4: Email drafting failed — {str(e)}"
-        )
-        # Provide fallback email
-        state["draft_email_subject"] = (
-            f"Re: Your inquiry from "
-            f"{state['company_name']}"
-        )
-        state["draft_email_body"] = (
-            f"Hi {state.get('contact_name', 'there')},\n\n"
-            f"Thank you for reaching out. "
-            f"I'd love to learn more about your needs "
-            f"at {state['company_name']}.\n\n"
-            f"Could we schedule a brief call this week?\n\n"
-            f"Best regards"
-        )
-        state["completed"] = True
+    except Exception:
+        logger.exception("[%s] %s failed", state.get("request_id"), "Email drafting")
+        state["error"] = "Email drafting failed; review provider configuration and logs."
+        state["completed"] = False
 
     return state

@@ -195,17 +195,9 @@ async def score_lead(state: LeadState) -> LeadState:
             f"qualified={state['is_qualified']}"
         )
 
-    except Exception as e:
-        logger.error(
-            f"[{state.get('request_id')}] "
-            f"Node 3: Scoring failed — {str(e)}"
-        )
-        # Default to MEDIUM on failure
-        # Better than losing the lead entirely
-        state["score"] = "MEDIUM"
-        state["score_reasoning"] = (
-            "Scoring unavailable — manual review needed"
-        )
-        state["is_qualified"] = True
+    except Exception:
+        logger.exception("[%s] %s failed", state.get("request_id"), "Lead scoring")
+        state["error"] = "Lead scoring failed; review provider configuration and logs."
+        state["completed"] = False
 
     return state
