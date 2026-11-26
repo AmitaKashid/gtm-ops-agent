@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
 
@@ -15,9 +16,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
+def allowed_origins() -> list[str]:
+    """Return explicit browser origins from configuration."""
+    configured = os.getenv("CORS_ALLOWED_ORIGINS", "http://127.0.0.1:8080,http://localhost:8080")
+    return [origin.strip() for origin in configured.split(",") if origin.strip()]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:8080", "http://localhost:8080"],
+    allow_origins=allowed_origins(),
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
