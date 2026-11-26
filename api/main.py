@@ -4,6 +4,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
 from api.routers import crm, leads, emails, meetings, competitors, hr_onboarding
 
@@ -12,6 +13,13 @@ app = FastAPI(
     title="GTM Ops Agent",
     description="API for sales and business operations workflows.",
     version="0.1.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:8080", "http://localhost:8080"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 app.add_middleware(RequestLoggingMiddleware)
