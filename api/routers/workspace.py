@@ -26,7 +26,11 @@ async def workspace_identity(credentials: Annotated[HTTPAuthorizationCredentials
     if credentials is None or credentials.scheme.lower() != 'bearer':
         raise HTTPException(status_code=401, detail='Authentication required', headers={'WWW-Authenticate': 'Bearer'})
     try:
-        settings = IdentitySettings(os.getenv('WORKSPACE_OIDC_ISSUER', ''), os.getenv('WORKSPACE_OIDC_AUDIENCE', ''), os.getenv('WORKSPACE_OIDC_JWKS_URL', ''))
+        allow_local_http = (
+            os.getenv('APP_ENV', '').lower() == 'development'
+            and os.getenv('WORKSPACE_ALLOW_INSECURE_LOCAL_OIDC', '').lower() == 'true'
+        )
+        settings = IdentitySettings(os.getenv('WORKSPACE_OIDC_ISSUER', ''), os.getenv('WORKSPACE_OIDC_AUDIENCE', ''), os.getenv('WORKSPACE_OIDC_JWKS_URL', ''), allow_insecure_loopback=allow_local_http)
     except ValueError:
         logger.error('Workspace identity configuration is invalid')
         raise HTTPException(status_code=503, detail='Workspace identity is not configured') from None

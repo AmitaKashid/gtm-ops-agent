@@ -40,3 +40,22 @@ not tenant-aware. Do not set `WORKSPACE_ENABLED` on the public demo or put
 real customer data into it. Further work is required for a production identity
 provider, token semantics and revocation, database permissions/row security,
 backups, and operational controls.
+
+## Local Keycloak development server
+
+`docker-compose.keycloak.yml` is a local-only development service bound to
+127.0.0.1:8088. Set `KEYCLOAK_ADMIN_USER` and `KEYCLOAK_ADMIN_PASSWORD`
+privately in your terminal before starting it. Never reuse these development
+credentials; never put them in source control, a screenshot, or chat. The
+credentials bootstrap the admin only when the Keycloak database is first
+created. The named volume keeps local development data between restarts.
+
+For a local API process only, `APP_ENV=development` together with
+`WORKSPACE_ALLOW_INSECURE_LOCAL_OIDC=true` permits HTTP issuer and JWKS URLs
+only for localhost, 127.0.0.1, or ::1. Start the API on 127.0.0.1. Never use
+this option with a public server. The public demo disallows workspace access.
+
+Keycloak still needs a realm, public browser client, separate API audience
+mapper and test user. No automatic realm or user provisioning or browser
+login is implemented yet. Keycloak must add the API-specific audience to the
+access token (not the ID token); verify token semantics for your configuration.

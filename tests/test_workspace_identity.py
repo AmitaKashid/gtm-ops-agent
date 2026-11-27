@@ -53,3 +53,11 @@ def test_wrong_signing_key_is_rejected(keys):
 def test_identity_provider_settings_require_https():
     with pytest.raises(ValueError):
         IdentitySettings('http://identity.example/', 'aud', 'https://identity.example/jwks')
+
+
+def test_explicit_insecure_oidc_only_permits_loopback():
+    assert IdentitySettings('http://127.0.0.1:8088/realms/demo', 'aud', 'http://127.0.0.1:8088/jwks', allow_insecure_loopback=True)
+    with pytest.raises(ValueError):
+        IdentitySettings('http://127.0.0.1:8088/realms/demo', 'aud', 'http://127.0.0.1:8088/jwks')
+    with pytest.raises(ValueError):
+        IdentitySettings('http://example.com', 'aud', 'http://example.com/jwks', allow_insecure_loopback=True)

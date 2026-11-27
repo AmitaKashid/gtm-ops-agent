@@ -1,0 +1,15 @@
+# Local development only. Never expose this instance to a public network.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: start-dev
+    ports:
+      - '127.0.0.1:8088:8080'
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USER:?Set KEYCLOAK_ADMIN_USER privately}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD privately}
+    volumes:
+      - keycloak_dev_data:/opt/keycloak/data
+
+volumes:
+  keycloak_dev_data:

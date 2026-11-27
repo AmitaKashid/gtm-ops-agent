@@ -18,14 +18,16 @@ class IdentitySettings:
     issuer: str
     audience: str
     jwks_url: str
+    allow_insecure_loopback: bool = False
 
     def __post_init__(self):
         if not self.issuer or not self.audience or not self.jwks_url:
             raise ValueError('Issuer, audience and JWKS URL are required')
         for value in (self.issuer, self.jwks_url):
             parsed = urlsplit(value)
-            if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
-                raise ValueError('Issuer and JWKS URL must be HTTPS URLs without credentials or fragments')
+            local_http = self.allow_insecure_loopback and parsed.scheme == 'http' and parsed.hostname in {'localhost', '127.0.0.1', '::1'}
+            if (parsed.scheme != 'https' and not local_http) or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+                raise ValueError('Issuer and JWKS URL must use HTTPS, except explicit loopback development')
 
 
 @dataclass(frozen=True)

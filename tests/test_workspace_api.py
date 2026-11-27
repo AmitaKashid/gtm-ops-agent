@@ -77,6 +77,28 @@ def test_authenticated_member_can_list_and_denial_is_403(app, token_setup, monke
     assert client.get(f'/workspace/organizations/{org}/accounts', headers=headers).status_code == 403
 
 
+def test_insecure_loopback_requires_development_and_explicit_opt_in(app, token_setup, monkeypatch):
+    issuer = 'http://127.0.0.1:8088/realms/gtm'
+    monkeypatch.setenv('WORKSPACE_OIDC_ISSUER', issuer)
+    monkeypatch.setenv('WORKSPACE_OIDC_JWKS_URL', issuer + '/protocol/openid-connect/certs')
+    monkeypatch.setenv('WORKSPACE_ALLOW_INSECURE_LOCAL_OIDC', 'true')
+    headers = {'Authorization': 'Bearer ' + token_setup(iss=issuer)}
+    path = f'/workspace/organizations/{uuid4()}/accounts'
+    async def fake_db():
+        yield object()
+    async def fake_list(*args):
+        return []
+    app.dependency_overrides[workspace.workspace_connection] = fake_db
+    monkeypatch.setattr(workspace, 'list_accounts', fake_list)
+    client = TestClient(app)
+    monkeypatch.setenv('APP_ENV', 'production')
+    assert client.get(path, headers=headers).status_code == 503
+    monkeypatch.setenv('APP_ENV', 'development')
+    assert client.get(path, headers=headers).status_code == 200
+    monkeypatch.delenv('WORKSPACE_ALLOW_INSECURE_LOCAL_OIDC')
+    assert client.get(path, headers=headers).status_code == 503
+
+
 @pytest.mark.skipif(not os.getenv('TEST_DATABASE_URL'), reason='TEST_DATABASE_URL not set')
 def test_signed_access_token_membership_and_audit_against_postgres(token_setup):
     import asyncio
