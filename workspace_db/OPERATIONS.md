@@ -89,3 +89,17 @@ before JWT validation or replace edge abuse controls. The rate-limit table
 stores a SHA-256 identity key, not access tokens. Rows persist until an operator
 removes them; define retention for your environment. Apply all migrations and
 re-run the runtime-grants command before deploying this version.
+
+## Deal preview
+
+Migration 004 adds deal fields used by CRM hygiene. Before deploying code that
+uses them, apply all migrations with the owner connection and grant SELECT and
+INSERT on workspace_deals to the existing restricted runtime role. Do not grant
+UPDATE, DELETE, ownership, or bypass privileges. Keep the owner connection out
+of the web service. Confirm the role guard and organization policies still pass.
+
+Members can add deals to accounts in their organization; viewers can read and
+scan them. A scan processes at most 100 stored deals, returns results without
+storing them, and sends no notifications. Deal editing, deletion, external CRM
+sync, scan history, and user invitations are not implemented. Use fictional data
+only in this hosted preview; it is not an enterprise production deployment.

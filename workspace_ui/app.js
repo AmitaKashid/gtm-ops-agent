@@ -16,6 +16,8 @@ let organizations = [];
 let sessionVersion = 0;
 let accountRequestVersion = 0;
 let crmRequestVersion = 0;
+let dealRequestVersion = 0;
+let workspaceScanVersion = 0;
 const $ = id => document.getElementById(id);
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 function message(text, error = false) { const box = $('message'); box.textContent = text; box.classList.toggle('error', error); }
@@ -66,6 +68,8 @@ async function loadAccounts() {
   $('account-status').textContent = 'Loading…';
   const accounts = await api('/workspace/organizations/' + encodeURIComponent(organization) + '/accounts');
   if (requestVersion !== accountRequestVersion || currentSession !== sessionVersion || organization !== $('organization').value) return;
+  const accountSelect = $('deal-account'); accountSelect.replaceChildren();
+  for (const account of accounts) { const option = document.createElement('option'); option.value = account.id; option.textContent = account.name; accountSelect.append(option); }
   const container = $('account-list'); container.replaceChildren();
   if (!accounts.length) { container.className = 'table-wrap empty'; container.textContent = 'No accounts yet. Add a fictional company to get started.'; }
   else {
@@ -79,6 +83,25 @@ async function loadAccounts() {
   const selected = organizations.find(item => item.id === organization);
   const canWrite = selected && ['owner','admin','member'].includes(selected.role);
   $('account-name').disabled = !canWrite; $('account-form').querySelector('button').disabled = !canWrite;
+  $('deal-submit').disabled = !canWrite || !accounts.length;
+}
+
+async function loadDeals() {
+  const organization = $('organization').value;
+  if (!organization) return;
+  const version = ++dealRequestVersion, currentSession = sessionVersion;
+  $('deals-status').textContent = 'Loading…';
+  const deals = await api('/workspace/organizations/' + encodeURIComponent(organization) + '/deals');
+  if (version !== dealRequestVersion || currentSession !== sessionVersion || organization !== $('organization').value) return;
+  const container = $('deal-list'); container.replaceChildren();
+  if (!deals.length) { container.className = 'table-wrap empty'; container.textContent = 'No deals yet.'; }
+  else {
+    container.className = 'table-wrap';
+    const table = document.createElement('table'), body = document.createElement('tbody');
+    for (const deal of deals) { const row = document.createElement('tr'); for (const value of [deal.name, deal.company, deal.stage, deal.owner_name || 'Unassigned']) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); } body.append(row); }
+    table.append(body); container.append(table);
+  }
+  $('deals-status').textContent = deals.length + (deals.length === 1 ? ' deal' : ' deals');
 }
 
 async function loadWorkspace() {
@@ -92,11 +115,12 @@ async function loadWorkspace() {
   if (!organizations.length) { $('workspace').hidden = true; message('This user has no workspace membership. Ask an administrator to add one.'); return; }
   $('workspace').hidden = false; message('Signed in. Use fictional data in this workspace preview.');
   await loadAccounts();
+  if (currentSession === sessionVersion) await loadDeals();
 }
 
 $('sign-in').addEventListener('click', () => signIn().catch(() => message('Could not start sign-in. Check the workspace configuration and try again.', true)));
-$('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; crmRequestVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('account-status').textContent = ''; $('account-name').value = ''; $('crm-result').textContent = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
-$('organization').addEventListener('change', () => { crmRequestVersion++; $('crm-result').textContent = ''; loadAccounts().catch(err => message(err.message, true)); });
+$('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; crmRequestVersion++; dealRequestVersion++; workspaceScanVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('deal-account').replaceChildren(); $('deal-list').replaceChildren(); $('account-status').textContent = ''; $('deals-status').textContent = ''; for (const id of ['account-name','deal-name','deal-stage','deal-owner','deal-value','deal-email','deal-phone','deal-contact-date','deal-stage-date']) $(id).value = ''; $('crm-result').textContent = ''; $('crm-workspace-result').textContent = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
+$('organization').addEventListener('change', () => { accountRequestVersion++; dealRequestVersion++; crmRequestVersion++; workspaceScanVersion++; $('account-list').replaceChildren(); $('deal-account').replaceChildren(); $('deal-list').replaceChildren(); $('account-status').textContent = ''; $('deals-status').textContent = ''; for (const id of ['account-name','deal-name','deal-stage','deal-owner','deal-value','deal-email','deal-phone','deal-contact-date','deal-stage-date']) $(id).value = ''; $('crm-result').textContent = ''; $('crm-workspace-result').textContent = ''; $('deal-submit').disabled = true; Promise.all([loadAccounts(), loadDeals()]).catch(err => message(err.message, true)); });
 $('crm-scan').addEventListener('click', async () => {
   const organization = $('organization').value, currentSession = sessionVersion, requestVersion = ++crmRequestVersion;
   if (!organization || !accessToken) return;
@@ -118,5 +142,31 @@ $('account-form').addEventListener('submit', async event => {
   try { await api('/workspace/organizations/' + encodeURIComponent($('organization').value) + '/accounts', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name})}); input.value = ''; message('Account added.'); await loadAccounts(); }
   catch(err) { message(err.message, true); }
   finally { const selected = organizations.find(item => item.id === $('organization').value); button.disabled = !selected || !['owner','admin','member'].includes(selected.role); }
+});
+$('deal-form').addEventListener('submit', async event => {
+  event.preventDefault(); const organization = $('organization').value, currentSession = sessionVersion;
+  const value = $('deal-value').value;
+  const body = {account_id:$('deal-account').value, name:$('deal-name').value.trim(), stage:$('deal-stage').value.trim(), owner_name:$('deal-owner').value.trim(), deal_value:value === '' ? null : value, contact_email:$('deal-email').value.trim() || null, contact_phone:$('deal-phone').value.trim() || null, last_contact_date:$('deal-contact-date').value, stage_changed_date:$('deal-stage-date').value};
+  $('deal-submit').disabled = true;
+  try {
+    await api('/workspace/organizations/' + encodeURIComponent(organization) + '/deals', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if (currentSession !== sessionVersion || organization !== $('organization').value) return;
+    for (const id of ['deal-name','deal-stage','deal-owner','deal-value','deal-email','deal-phone','deal-contact-date','deal-stage-date']) $(id).value = '';
+    message('Deal added.'); await loadDeals();
+  } catch (err) { if (currentSession === sessionVersion && organization === $('organization').value) message('Could not add the deal. Check the fields and try again.', true); }
+  finally { const selected = organizations.find(item => item.id === $('organization').value); $('deal-submit').disabled = !selected || !['owner','admin','member'].includes(selected.role) || !$('deal-account').value; }
+});
+$('crm-workspace-scan').addEventListener('click', async () => {
+  const organization = $('organization').value, currentSession = sessionVersion, version = ++workspaceScanVersion;
+  if (!organization || !accessToken) return;
+  const button = $('crm-workspace-scan'); button.disabled = true; $('crm-workspace-result').textContent = 'Scanning workspace deals…';
+  try {
+    const result = await api('/workspace/organizations/' + encodeURIComponent(organization) + '/crm/scan', {method:'POST'});
+    if (currentSession !== sessionVersion || version !== workspaceScanVersion || organization !== $('organization').value) return;
+    if (!result.completed || result.error) throw new Error('Scan failed');
+    $('crm-workspace-result').textContent = `Scanned ${result.total_deals_count} deal(s). ${result.problematic_deals_count} need attention; ${result.total_alerts_count} issues found. No notifications sent.`;
+    for (const notification of Object.values(result.owner_notifications || {})) for (const alert of notification.alerts || []) { const item = document.createElement('p'); item.textContent = `${alert.deal_name}: ${alert.recommended_action}`; $('crm-workspace-result').append(item); }
+  } catch (err) { if (currentSession === sessionVersion && version === workspaceScanVersion && organization === $('organization').value) $('crm-workspace-result').textContent = 'Could not run the scan. Add a deal and try again.'; }
+  finally { button.disabled = false; }
 });
 finishSignIn().then(signedIn => signedIn && loadWorkspace()).catch(err => message(err.message, true));

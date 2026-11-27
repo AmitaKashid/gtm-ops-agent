@@ -93,6 +93,20 @@ def test_organization_discovery_requires_verified_identity(app, token_setup, mon
     assert seen == ['person']
 
 
+def test_workspace_deals_require_valid_access_token(app, token_setup, monkeypatch):
+    async def db():
+        yield object()
+    async def empty(*args):
+        return []
+    app.dependency_overrides[workspace.workspace_connection] = db
+    monkeypatch.setattr(workspace, 'list_deals', empty)
+    client = TestClient(app)
+    path = f'/workspace/organizations/{uuid4()}/deals'
+    assert client.get(path).status_code == 401
+    assert client.get(path, headers={'Authorization': 'Bearer ' + token_setup(aud='wrong')}).status_code == 401
+    assert client.get(path, headers={'Authorization': 'Bearer ' + token_setup()}).status_code == 200
+
+
 def test_production_rejects_unsafe_database_role(app, token_setup, monkeypatch):
     class UnsafeConnection:
         closed = False
@@ -169,13 +183,30 @@ def test_signed_access_token_membership_and_audit_against_postgres(token_setup):
                 response = await client.post(path, headers=headers, json={'name': 'Acme'})
                 assert response.status_code == 201, response.text
                 assert response.json()['name'] == 'Acme'
+                account_id = response.json()['id']
                 assert len((await client.get(path, headers=headers)).json()) == 1
+                deals_path = f'/workspace/organizations/{first}/deals'
+                deal = {'account_id': account_id, 'name': 'Sample deal', 'stage': 'Proposal',
+                        'owner_name': 'Alex', 'deal_value': '15000.00', 'contact_email': 'sample@example.com',
+                        'last_contact_date': '2020-01-01', 'stage_changed_date': '2020-01-01'}
+                created = await client.post(deals_path, headers=headers, json=deal)
+                assert created.status_code == 201, created.text
+                assert created.json()['company'] == 'Acme'
+                assert len((await client.get(deals_path, headers=headers)).json()) == 1
+                scan = await client.post(f'/workspace/organizations/{first}/crm/scan', headers=headers)
+                assert scan.status_code == 200, scan.text
+                assert scan.json()['total_deals_count'] == 1
+                assert scan.json()['total_alerts_count'] == 3
+                assert (await client.get(f'/workspace/organizations/{second}/deals', headers=headers)).status_code == 403
+                assert (await client.post(f'/workspace/organizations/{second}/crm/scan', headers=headers)).status_code == 403
+                assert (await client.post(deals_path, headers=headers, json={**deal, 'account_id': str(uuid4())})).status_code == 404
                 assert (await client.get(f'/workspace/organizations/{second}/accounts', headers=headers)).status_code == 403
                 assert (await client.post(f'/workspace/organizations/{second}/accounts', headers=headers, json={'name': 'Forbidden'})).status_code == 403
                 await conn.execute("UPDATE workspace_memberships SET role = 'viewer' WHERE user_id = $1", user)
                 assert (await client.post(path, headers=headers, json={'name': 'Forbidden'})).status_code == 403
+                assert (await client.post(deals_path, headers=headers, json=deal)).status_code == 403
             assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 1
-            assert await conn.fetchval('SELECT count(*) FROM workspace_audit_events WHERE actor_id = $1', user) == 1
+            assert await conn.fetchval('SELECT count(*) FROM workspace_audit_events WHERE actor_id = $1', user) == 2
         finally:
             try:
                 await conn.execute('SET search_path TO public')
