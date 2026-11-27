@@ -25,3 +25,15 @@ existing database and verify recovery before applying migrations there.
 
 No frontend, authentication, audit capture, database backup, or storage for
 external credentials is implemented by this foundation alone.
+
+## PostgreSQL integration tests
+
+Run tests against a dedicated, disposable PostgreSQL database. Set
+`TEST_DATABASE_URL` to its connection URL and run
+`python -m pytest tests/test_workspace_postgres.py -v`. Tests create and remove
+randomly named schemas. If the variable is absent, these integration tests skip;
+CI starts a PostgreSQL service and runs them.
+
+The cross-organization foreign key test covers one data-integrity constraint.
+It does not prove authorization or row-level isolation: the application has
+not implemented either yet.
