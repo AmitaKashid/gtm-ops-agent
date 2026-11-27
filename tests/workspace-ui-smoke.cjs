@@ -14,7 +14,7 @@ const element = id => elements[id] ||= new Element();
 const pending = [];
 const context = vm.createContext({
   document: {getElementById: element, createElement: () => new Element()},
-  location: {search: '', pathname: '/workspace-app', origin: 'http://127.0.0.1:8010'},
+  location: {search: '', pathname: '/workspace-app', origin: 'https://workspace.example'},
   sessionStorage: {getItem() {return null;}, removeItem() {}, setItem() {}},
   fetch: url => new Promise(resolve => pending.push({url, resolve})),
   URLSearchParams, TextEncoder, console,
@@ -45,5 +45,17 @@ const response = data => ({status: 200, ok: true, json: async () => data});
   assert.equal(element('workspace').hidden, true);
   assert.equal(element('account-list').children.length, 0);
   assert.equal(vm.runInContext('accessToken', context), null);
-  console.log('Workspace ignores stale organization responses and clears account data on sign-out.');
+  const saved = {};
+  context.sessionStorage = {getItem: key => saved[key], setItem: (key, value) => {saved[key] = value;}, removeItem: key => {delete saved[key];}};
+  context.crypto = require('node:crypto').webcrypto;
+  context.btoa = value => Buffer.from(value, 'binary').toString('base64');
+  context.location = {protocol:'https:', hostname:'workspace.example', origin:'https://workspace.example', pathname:'/workspace-app', assign: value => {context.destination = value;}};
+  context.fetch = async url => { assert.equal(url, '/workspace-config'); return response({issuer:'https://identity.example/realms/test', client_id:'web'}); };
+  await vm.runInContext('signIn()', context);
+  const target = new URL(context.destination);
+  assert.equal(target.origin, 'https://identity.example');
+  assert.equal(target.searchParams.get('redirect_uri'), 'https://workspace.example/workspace-app');
+  assert.equal(target.searchParams.get('code_challenge_method'), 'S256');
+  assert(saved.gtm_pkce_verifier && saved.gtm_pkce_state);
+  console.log('Workspace ignores stale responses, clears data on sign-out, and starts hosted PKCE sign-in.');
 })().catch(error => { console.error(error); process.exit(1); });

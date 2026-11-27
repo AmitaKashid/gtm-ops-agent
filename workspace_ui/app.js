@@ -1,8 +1,16 @@
 'use strict';
-// Local development configuration matches the imported Keycloak realm.
-const issuer = 'http://127.0.0.1:8088/realms/gtm-dev';
-const clientId = 'gtm-workspace-web';
-const redirectUri = 'http://127.0.0.1:8010/workspace-app';
+// Public client configuration is supplied by the same-origin API.
+let issuer, clientId;
+const redirectUri = location.origin + '/workspace-app';
+async function loadConfig() {
+  if (issuer && clientId) return;
+  const allowedLoopback = location.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
+  if (location.protocol !== 'https:' && !allowedLoopback) throw new Error('Secure connection required.');
+  const response = await fetch('/workspace-config', {cache:'no-store'});
+  if (!response.ok) throw new Error('Workspace sign-in is not configured.');
+  const config = await response.json();
+  issuer = config.issuer; clientId = config.client_id;
+}
 let accessToken = null;
 let organizations = [];
 let sessionVersion = 0;
@@ -13,7 +21,7 @@ function message(text, error = false) { const box = $('message'); box.textConten
 function randomString() { return b64(crypto.getRandomValues(new Uint8Array(32))); }
 
 async function signIn() {
-  if (location.origin !== 'http://127.0.0.1:8010') { message('Open this workspace at http://127.0.0.1:8010/workspace-app.', true); return; }
+  await loadConfig();
   const verifier = randomString(), state = randomString();
   const challenge = b64(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
   sessionStorage.setItem('gtm_pkce_verifier', verifier);
@@ -30,6 +38,7 @@ async function finishSignIn() {
   sessionStorage.removeItem('gtm_pkce_state'); sessionStorage.removeItem('gtm_pkce_verifier');
   history.replaceState(null, '', location.pathname);
   if (!code || !expectedState || !verifier || returnedState !== expectedState) throw new Error('Sign-in could not be verified. Please try again.');
+  await loadConfig();
   const body = new URLSearchParams({grant_type:'authorization_code', client_id:clientId, code, code_verifier:verifier, redirect_uri:redirectUri});
   const response = await fetch(issuer + '/protocol/openid-connect/token', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
   if (!response.ok) throw new Error('Sign-in failed. Please try again.');
@@ -80,11 +89,11 @@ async function loadWorkspace() {
   for (const org of organizations) { const option = document.createElement('option'); option.value = org.id; option.textContent = org.name; select.append(option); }
   $('sign-in').hidden = true; $('sign-out').hidden = false;
   if (!organizations.length) { $('workspace').hidden = true; message('This user has no workspace membership. Ask an administrator to add one.'); return; }
-  $('workspace').hidden = false; message('Signed in. Use fictional data in this development workspace.');
+  $('workspace').hidden = false; message('Signed in. Use fictional data in this workspace preview.');
   await loadAccounts();
 }
 
-$('sign-in').addEventListener('click', () => signIn().catch(() => message('Could not start sign-in. Check Keycloak and try again.', true)));
+$('sign-in').addEventListener('click', () => signIn().catch(() => message('Could not start sign-in. Check the workspace configuration and try again.', true)));
 $('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('account-status').textContent = ''; $('account-name').value = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
 $('organization').addEventListener('change', () => loadAccounts().catch(err => message(err.message, true)));
 $('account-form').addEventListener('submit', async event => {

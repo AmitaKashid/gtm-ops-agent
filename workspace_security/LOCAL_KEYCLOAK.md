@@ -69,6 +69,5 @@ Keycloak session. Account creation is available to owners/admins/members;
 viewers can only read. The backend checks membership on each operation.
 
 The GitHub Pages and Render demo do not become an authenticated workspace.
-Do not enable local HTTP identity on a public instance. Database row security,
-provider-specific token revocation, backup/restore verification, real secrets
-management, and production hosting are not implemented by this setup.
+See HOSTED_PREVIEW.md for the hosted prototype and its limitations. Never enable
+local HTTP identity on a public instance.
