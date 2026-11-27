@@ -4,7 +4,7 @@ from pathlib import Path
 
 def test_local_keycloak_client_uses_pkce_and_access_token_audience():
     root = Path(__file__).resolve().parents[1]
-    realm = json.loads((root / 'keycloak/realm-gtm-dev.json').read_text())
+    realm = json.loads((root / 'keycloak/gtm-dev-realm.json').read_text())
     assert realm['registrationAllowed'] is False
     client, = realm['clients']
     assert client['publicClient'] is True

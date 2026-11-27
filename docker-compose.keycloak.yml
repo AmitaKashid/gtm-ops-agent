@@ -10,7 +10,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD privately}
     volumes:
       - keycloak_dev_data:/opt/keycloak/data
-      - ./keycloak/realm-gtm-dev.json:/opt/keycloak/data/import/realm-gtm-dev.json:ro
+      - ./keycloak/gtm-dev-realm.json:/opt/keycloak/data/import/gtm-dev-realm.json:ro
 
 volumes:
   keycloak_dev_data:
