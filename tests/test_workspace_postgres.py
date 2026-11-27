@@ -71,3 +71,43 @@ def test_failing_migration_rolls_back_all_changes():
             finally:
                 await conn.close()
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not os.getenv('TEST_DATABASE_URL'), reason='TEST_DATABASE_URL not set')
+def test_accounts_are_scoped_and_writes_are_audited():
+    from workspace_db.accounts import create_account, list_accounts
+    from workspace_security.authorization import AccessDenied
+    from workspace_security.identity import VerifiedIdentity
+
+    async def run():
+        conn = await asyncpg.connect(os.environ['TEST_DATABASE_URL'])
+        schema = 'workspace_test_' + uuid4().hex
+        try:
+            await conn.execute(f'CREATE SCHEMA "{schema}"')
+            await conn.execute("SELECT set_config('search_path', $1, false)", schema)
+            await apply_migrations(conn, load_migrations())
+            first, second, user = uuid4(), uuid4(), uuid4()
+            await conn.execute('INSERT INTO workspace_organizations(id, name) VALUES ($1, $2), ($3, $4)', first, 'First', second, 'Second')
+            await conn.execute('INSERT INTO workspace_users(id, identity_issuer, identity_subject) VALUES ($1, $2, $3)', user, 'https://id.example/', 'user-1')
+            await conn.execute('INSERT INTO workspace_memberships(organization_id, user_id, role) VALUES ($1, $2, $3)', first, user, 'member')
+            identity = VerifiedIdentity('https://id.example/', 'user-1')
+            created = await create_account(conn, identity, first, '  Acme  ')
+            assert created['name'] == 'Acme'
+            assert len(await list_accounts(conn, identity, first)) == 1
+            with pytest.raises(AccessDenied):
+                await list_accounts(conn, identity, second)
+            with pytest.raises(AccessDenied):
+                await create_account(conn, identity, second, 'Forbidden')
+            assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 1
+            assert await conn.fetchval('SELECT count(*) FROM workspace_audit_events WHERE organization_id = $1 AND actor_id = $2', first, user) == 1
+            await conn.execute("UPDATE workspace_memberships SET role = 'viewer' WHERE user_id = $1", user)
+            with pytest.raises(AccessDenied):
+                await create_account(conn, identity, first, 'Forbidden')
+            assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 1
+        finally:
+            try:
+                await conn.execute('SET search_path TO public')
+                await conn.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            finally:
+                await conn.close()
+    asyncio.run(run())

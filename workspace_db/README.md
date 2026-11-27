@@ -37,3 +37,9 @@ CI starts a PostgreSQL service and runs them.
 The cross-organization foreign key test covers one data-integrity constraint.
 It does not prove authorization or row-level isolation: the application has
 not implemented either yet.
+
+`workspace_db.accounts` contains internal account operations that check
+membership and create an audit event in the same transaction. Callers must
+supply an identity verified by a trusted provider. These functions are not
+connected to HTTP routes and do not replace authentication or database row
+security.
