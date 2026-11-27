@@ -29,6 +29,7 @@ async def grant_runtime(connection, role):
         await connection.execute(f'GRANT UPDATE (created_at) ON workspace_memberships TO {quoted}')
         await connection.execute(f'GRANT SELECT, INSERT ON workspace_accounts TO {quoted}')
         await connection.execute(f'GRANT INSERT ON workspace_audit_events TO {quoted}')
+        await connection.execute(f'GRANT SELECT, INSERT, UPDATE ON workspace_rate_limits TO {quoted}')
 
 
 async def main():

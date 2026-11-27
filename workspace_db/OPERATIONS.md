@@ -78,3 +78,14 @@ subject. It requires a remote database URL with `sslmode=verify-full` in
 promote an existing non-owner or add another owner to an occupied organization.
 The tool does not expose an API endpoint, create Keycloak users, or implement
 member invitations. Store the admin URL only in a secure operator environment.
+
+## Shared request limit
+
+Hosted workspace requests with a verified identity use a PostgreSQL fixed
+one-minute window, default 60 requests per identity. Set
+`WORKSPACE_RATE_LIMIT_PER_MINUTE` between 1 and 10000. This limit is shared by
+instances using the same database. It does not stop unauthenticated traffic
+before JWT validation or replace edge abuse controls. The rate-limit table
+stores a SHA-256 identity key, not access tokens. Rows persist until an operator
+removes them; define retention for your environment. Apply all migrations and
+re-run the runtime-grants command before deploying this version.

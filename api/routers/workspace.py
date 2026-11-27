@@ -16,6 +16,7 @@ from workspace_db.organizations import list_organizations
 from workspace_security.authorization import AccessDenied
 from workspace_security.database_guard import UnsafeDatabaseRole, require_safe_database_role
 from workspace_security.identity import IdentitySettings, InvalidAccessToken, verify_access_token
+from workspace_security.rate_limit import RateLimitConfigurationError, configured_limit, consume_workspace_request
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/workspace', tags=['Workspace'])
@@ -60,6 +61,13 @@ async def workspace_connection(identity=Depends(workspace_identity)):
             except (UnsafeDatabaseRole, asyncpg.PostgresError):
                 logger.error('Workspace database security check failed')
                 raise HTTPException(status_code=503, detail='Workspace database security is not configured') from None
+            try:
+                allowed = await consume_workspace_request(conn, identity, configured_limit())
+            except (RateLimitConfigurationError, asyncpg.PostgresError):
+                logger.error('Workspace rate limit is unavailable')
+                raise HTTPException(status_code=503, detail='Workspace rate limit is unavailable') from None
+            if not allowed:
+                raise HTTPException(status_code=429, detail='Workspace request limit reached', headers={'Retry-After': '60'})
         yield conn
     finally:
         await conn.close()

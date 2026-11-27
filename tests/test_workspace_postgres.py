@@ -216,6 +216,11 @@ def test_runtime_login_grants_prevent_membership_escalation():
             runtime = await asyncpg.connect(os.environ['TEST_DATABASE_URL'], database=database, user=role, password=password)
             await require_safe_database_role(runtime)
             identity = VerifiedIdentity('issuer', 'subject')
+            from workspace_security.rate_limit import consume_workspace_request
+            async with runtime.transaction():
+                assert await consume_workspace_request(runtime, identity, 2)
+                assert await consume_workspace_request(runtime, identity, 2)
+                assert not await consume_workspace_request(runtime, identity, 2)
             assert (await create_account(runtime, identity, org, 'Example'))['name'] == 'Example'
             assert len(await list_accounts(runtime, identity, org)) == 1
             with pytest.raises(AccessDenied):

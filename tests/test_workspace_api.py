@@ -183,3 +183,26 @@ def test_signed_access_token_membership_and_audit_against_postgres(token_setup):
             finally:
                 await conn.close()
     asyncio.run(run())
+
+
+def test_authenticated_hosted_workspace_rate_limit_returns_429(app, token_setup, monkeypatch):
+    class Connection:
+        closed = False
+        async def close(self):
+            self.closed = True
+    conn = Connection()
+    async def connect(*args, **kwargs):
+        return conn
+    async def safe_role(connection):
+        pass
+    async def denied(connection, identity, limit):
+        return False
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test')
+    monkeypatch.setattr(workspace.asyncpg, 'connect', connect)
+    monkeypatch.setattr(workspace, 'require_safe_database_role', safe_role)
+    monkeypatch.setattr(workspace, 'consume_workspace_request', denied)
+    response = TestClient(app).get('/workspace/organizations', headers={'Authorization': 'Bearer ' + token_setup()})
+    assert response.status_code == 429
+    assert response.headers['retry-after'] == '60'
+    assert conn.closed

@@ -25,7 +25,7 @@ except explicitly enabled local development. The service must itself use HTTPS.
 Do not enable a hosted workspace for customer data yet. The current database
 role guard cannot verify safe grants or policy definitions, its membership lock
 requires privileges that need a reviewed least-privilege design, and protected
-workflow operations and member administration are not implemented. Secrets
-management, shared rate limits, production recovery, and end-to-end hosted
-identity and isolation tests are also unfinished. The public demo can stay
+workflow operations and member administration are not implemented. Secrets management, protection from unauthenticated abuse, production recovery,
+and end-to-end hosted identity and isolation tests are also unfinished. The
+authenticated workspace rate limit is backed by the workspace database. The public demo can stay
 online separately in its existing mode.
