@@ -93,6 +93,30 @@ def test_organization_discovery_requires_verified_identity(app, token_setup, mon
     assert seen == ['person']
 
 
+def test_production_rejects_unsafe_database_role(app, token_setup, monkeypatch):
+    class UnsafeConnection:
+        closed = False
+
+        async def fetchrow(self, query):
+            return {'direct_login': True, 'can_bypass': True}
+
+        async def close(self):
+            self.closed = True
+
+    conn = UnsafeConnection()
+    async def connect(*args, **kwargs):
+        return conn
+    monkeypatch.setattr(workspace.asyncpg, 'connect', connect)
+    monkeypatch.setenv('APP_ENV', 'production')
+    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test')
+    response = TestClient(app).get(
+        f'/workspace/organizations/{uuid4()}/accounts',
+        headers={'Authorization': 'Bearer ' + token_setup()},
+    )
+    assert response.status_code == 503
+    assert conn.closed
+
+
 def test_insecure_loopback_requires_development_and_explicit_opt_in(app, token_setup, monkeypatch):
     issuer = 'http://127.0.0.1:8088/realms/gtm'
     monkeypatch.setenv('WORKSPACE_OIDC_ISSUER', issuer)
