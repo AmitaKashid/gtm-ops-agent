@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GTM Ops Agent — AI Operations Dashboard</title>
+<title>GTM Ops Agent — Workspace</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -465,6 +465,40 @@
     .metrics { grid-template-columns: repeat(2, 1fr); }
     .grid-2 { grid-template-columns: 1fr; }
   }
+
+  .welcome { padding: 38px; border: 1px solid #293c49; border-radius: 18px; background: radial-gradient(circle at 92% 10%, #184d49 0, transparent 34%), linear-gradient(120deg, #152b31, #101c29 72%); }
+  .eyebrow { color:#86cab8; font-size:11px; font-weight:700; letter-spacing:.14em; }
+  .demo-label { display:inline-block; padding:5px 8px; border:1px solid #376e61; border-radius:99px; margin-left:10px; letter-spacing:.04em; }
+  .welcome h1 { max-width:660px; margin:20px 0 12px; font-size:clamp(28px,4vw,42px); line-height:1.1; letter-spacing:-.035em; }
+  .welcome p, .section-heading p { color:#abc0c7; line-height:1.6; }
+  .demo-note { margin-top:24px; color:#bed3cc; font-size:13px; }
+  .workspace-section { margin-top:34px; }
+  .section-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  .section-heading h2 { font-size:20px; letter-spacing:-.02em; }
+  .section-heading p { font-size:13px; margin-top:5px; }
+  .health-pill { white-space:nowrap; color:#aabfc7; font-size:12px; background:#14272b; border-radius:99px; padding:8px 12px; }
+  .task-grid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; }
+  .task-card { min-height:190px; display:flex; flex-direction:column; align-items:flex-start; text-align:left; gap:11px; padding:22px; border:1px solid #253245; border-radius:14px; background:#111c2b; color:var(--text); font:inherit; cursor:pointer; transition: transform .15s,border-color .15s; }
+  .task-card:hover { transform:translateY(-3px); border-color:#3a9b87; }
+  .task-card:focus-visible { outline:2px solid #71d7b9; outline-offset:3px; }
+  .task-card strong { font-size:15px; } .task-card span:not(.task-icon) { color:#9eafbf; font-size:13px; line-height:1.5; }
+  .task-card small { color:#77cbb6; font-size:10px; font-weight:700; letter-spacing:.06em; margin-top:auto; }
+  .task-icon { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:#173b39; color:#8ae2c9; font-size:20px; }
+  .availability-note { margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; color:#aab6c5; font-size:13px; }
+  .availability-note strong { color:#e4ebee; }
+  .connection-settings { position:relative; color:var(--text-muted); font-size:12px; }
+  .connection-settings summary { cursor:pointer; padding:9px; }
+  .connection-fields { position:absolute; right:0; top:35px; z-index:3; display:flex; gap:8px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+  @media (max-width:1100px) { .task-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:768px) {
+    body { display:block; } .sidebar { position:relative; transform:none; width:100%; min-height:0; }
+    .sidebar-header { padding:16px 20px; } .nav { padding:8px 12px; } .nav-section { margin-bottom:6px; }
+    .nav-label { margin:4px 0; } .nav-item { display:inline-flex; margin:2px; padding:8px 10px; }
+    .sidebar-footer { display:none; } .main { margin-left:0; } .topbar { padding:18px; }
+    .content { padding:18px; } .welcome { padding:24px; } .connection-fields { max-width:90vw; }
+    .connection-fields input { width:200px !important; }
+  }
+  @media (max-width:480px) { .task-grid { grid-template-columns:1fr; } .task-card { min-height:150px; } }
 </style>
 </head>
 <body>
@@ -476,7 +510,7 @@
       <div class="logo-icon">⚡</div>
       <div>
         <div class="logo-text">GTM Ops Agent</div>
-        <div class="logo-sub">AI Operations Platform</div>
+        <div class="logo-sub">Sales workspace · Demo</div>
       </div>
     </div>
     <div class="status-badge">
@@ -521,7 +555,7 @@
   </nav>
 
   <div class="sidebar-footer">
-    <div>Live API</div>
+    <div>Connected service</div>
     <span class="api-url" id="apiUrlDisplay">Loading...</span>
   </div>
 </aside>
@@ -531,114 +565,34 @@
   <div class="topbar">
     <div>
       <div class="page-title" id="pageTitle">Dashboard</div>
-      <div class="page-sub" id="pageSub">Overview of all GTM operations agents</div>
+      <div class="page-sub" id="pageSub">Choose a task and work with sample data</div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center;">
+    <details class="connection-settings"><summary>Connection settings</summary><div class="connection-fields">
       <input type="text" id="apiUrlInput" placeholder="API URL" style="width:360px;padding:8px 14px;font-size:12px;font-family:'DM Mono',monospace;" value="">
       <button class="btn btn-secondary" onclick="setApiUrl()" style="padding:8px 16px;font-size:12px;">Set URL</button>
-    </div>
+    </div></details>
   </div>
 
   <div class="content">
 
     <!-- Dashboard page -->
     <div class="page active" id="page-dashboard">
-      <div class="metrics">
-        <div class="metric-card">
-          <div class="metric-value">6</div>
-          <div class="metric-label">Workflows</div>
+      <section class="welcome">
+        <div class="eyebrow">YOUR WORKSPACE <span class="demo-label">PUBLIC DEMO</span></div>
+        <h1>Turn conversations into next steps.</h1>
+        <p>Review a lead, triage an email, summarize a meeting, or explore sample CRM data.</p>
+        <div class="demo-note">Use fictional data only. Outputs may be inaccurate and should be reviewed before use.</div>
+      </section>
+      <section class="workspace-section" aria-labelledby="tasks-title">
+        <div class="section-heading"><div><h2 id="tasks-title">What would you like to do?</h2><p>Choose a workflow to get started.</p></div><span class="health-pill">Service <strong id="healthStatus">—</strong></span></div>
+        <div class="task-grid">
+          <button class="task-card" type="button" onclick="showPage('leads')"><span class="task-icon">↗</span><strong>Analyze a lead</strong><span>Assess interest and draft a reply.</span><small>LEAD INTELLIGENCE →</small></button>
+          <button class="task-card" type="button" onclick="showPage('emails')"><span class="task-icon">✉</span><strong>Triage an email</strong><span>Classify an email and prepare a response.</span><small>EMAIL TRIAGE →</small></button>
+          <button class="task-card" type="button" onclick="showPage('meetings')"><span class="task-icon">◷</span><strong>Summarize a meeting</strong><span>Find decisions and action items in a transcript.</span><small>MEETING INTELLIGENCE →</small></button>
+          <button class="task-card" type="button" onclick="showPage('crm')"><span class="task-icon">▤</span><strong>Review sample deals</strong><span>Explore a scan for stale and incomplete deals.</span><small>CRM HYGIENE →</small></button>
         </div>
-        <div class="metric-card">
-          <div class="metric-value">5</div>
-          <div class="metric-label">n8n Templates</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value">Local</div>
-          <div class="metric-label">Test Suite</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value">2</div>
-          <div class="metric-label">LLM Providers</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value">Local</div>
-          <div class="metric-label">Default Target</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-value" id="healthStatus">—</div>
-          <div class="metric-label">API Health</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">🤖 Agents</div>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            <div onclick="showPage('leads')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">🎯 Lead Intelligence</div>
-              <div style="font-size:12px;color:var(--text-muted);">Research → Score → Draft Email → Slack Approval</div>
-            </div>
-            <div onclick="showPage('emails')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">📧 Email Triage</div>
-              <div style="font-size:12px;color:var(--text-muted);">Classify → Draft Reply → Route to Team</div>
-            </div>
-            <div onclick="showPage('meetings')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">🗓 Meeting Intelligence</div>
-              <div style="font-size:12px;color:var(--text-muted);">Extract Action Items → Summary → Slack + Notion</div>
-            </div>
-            <div onclick="showPage('crm')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">💼 CRM Hygiene</div>
-              <div style="font-size:12px;color:var(--text-muted);">Scan Deals → Flag Stale → Alert Owners</div>
-            </div>
-            <div onclick="showPage('competitors')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">🔍 Competitor Intelligence</div>
-              <div style="font-size:12px;color:var(--text-muted);">Monitor Changes → Weekly Report → Slack</div>
-            </div>
-            <div onclick="showPage('hr')" style="cursor:pointer;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-              <div style="font-weight:600;font-size:14px;margin-bottom:4px;">👤 HR Onboarding</div>
-              <div style="font-size:12px;color:var(--text-muted);">Natural Language → Plan → Approve → Provision</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">⚙️ Tech Stack</div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Agent Framework</span>
-              <span style="font-weight:600;">LangGraph</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Primary LLM</span>
-              <span style="font-weight:600;">Groq — Llama 3.3 70B</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Secondary LLM</span>
-              <span style="font-weight:600;">Ollama (local)</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Orchestration</span>
-              <span style="font-weight:600;">n8n</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">API</span>
-              <span style="font-weight:600;">FastAPI</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Database</span>
-              <span style="font-weight:600;">PostgreSQL</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Monitoring</span>
-              <span style="font-weight:600;">LangSmith</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:10px 14px;background:var(--bg);border-radius:8px;border:1px solid var(--border);font-size:13px;">
-              <span style="color:var(--text-muted);">Deployment</span>
-              <span style="font-weight:600;">Local development</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      </section>
+      <div class="availability-note"><strong>More workflows</strong><span>Competitor monitoring and HR onboarding are unavailable in the public demo.</span></div>
     </div>
 
     <!-- Lead Intelligence -->
@@ -678,7 +632,7 @@
         </div>
         <button class="btn btn-primary" onclick="analyzeLead()">⚡ Analyze Lead</button>
       </div>
-      <div id="lead-result"></div>
+      <div id="lead-result" aria-live="polite"></div>
     </div>
 
     <!-- Email Triage -->
@@ -709,7 +663,7 @@
         </div>
         <button class="btn btn-primary" onclick="triageEmail()">⚡ Triage Email</button>
       </div>
-      <div id="email-result"></div>
+      <div id="email-result" aria-live="polite"></div>
     </div>
 
     <!-- Meeting Intelligence -->
@@ -744,7 +698,7 @@
         </div>
         <button class="btn btn-primary" onclick="analyzeMeeting()">⚡ Analyze Meeting</button>
       </div>
-      <div id="meeting-result"></div>
+      <div id="meeting-result" aria-live="polite"></div>
     </div>
 
     <!-- CRM Hygiene -->
@@ -756,22 +710,22 @@
           <label>Scan Date</label>
           <input type="text" id="crm-date" placeholder="e.g. 2026-05-28">
         </div>
-        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;">Using sample deal data for demo. In production this connects to HubSpot API.</p>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;">This scan uses sample deals. No CRM account is connected.</p>
         <button class="btn btn-primary" onclick="scanCRM()">⚡ Run CRM Scan</button>
       </div>
-      <div id="crm-result"></div>
+      <div id="crm-result" aria-live="polite"></div>
     </div>
 
     <!-- Competitor Intelligence -->
     <div class="page" id="page-competitors">
       <div class="card">
         <div class="card-title">🔍 Competitor Intelligence Scan</div>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Monitor competitor websites for changes in pricing, features, and messaging.</p>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">This workflow is unavailable in the public demo. It may be available in a separately configured local environment.</p>
         <div class="form-group">
           <label>Report Date</label>
           <input type="text" id="comp-date" placeholder="e.g. 2026-05-28">
         </div>
-        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;">Monitoring: Example Corp, HTTPBin. In production you can configure any competitor URL.</p>
+        <p style="color:var(--text-muted);font-size:12px;margin-bottom:16px;">The public demo does not run website scans.</p>
         <button class="btn btn-primary" onclick="scanCompetitors()">⚡ Run Competitor Scan</button>
       </div>
       <div id="comp-result"></div>
@@ -781,13 +735,13 @@
     <div class="page" id="page-hr">
       <div class="card">
         <div class="card-title">👤 HR Onboarding Request</div>
-        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Type a natural language onboarding request to prepare a plan. Slack requires separate configuration.</p>
+        <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">This workflow is unavailable in the public demo. Do not enter personal information.</p>
         <div class="form-group">
           <label>Onboarding Request *</label>
           <textarea id="hr-request" placeholder="e.g. Onboard Sarah Chen as Product Designer starting Monday June 2nd, email: sarah@datasync.de, manager: Thomas Müller, Berlin office" style="min-height:100px;"></textarea>
         </div>
         <div style="background:var(--accent-dim);border:1px solid rgba(0,151,117,0.2);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--accent);">
-          Prototype: approval is not verified by the API. Use synthetic data only.
+          Provisioning is disabled until authenticated approval is implemented.
         </div>
         <button class="btn btn-primary" onclick="submitHROnboarding()">⚡ Submit Onboarding Request</button>
       </div>
@@ -801,10 +755,10 @@
 <script>
 let API_URL = location.hostname.endsWith('.onrender.com')
   ? location.origin
-  : window.GTM_API_URL || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8010' : '');
+  : (window.GTM_API_URL || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8010' : '')).trim().replace(/\/+$/, '');
 
 function setApiUrl() {
-  API_URL = document.getElementById('apiUrlInput').value.trim().replace(/\/$/, '');
+  API_URL = document.getElementById('apiUrlInput').value.trim().replace(/\/+$/, '');
   document.getElementById('apiUrlDisplay').textContent = API_URL;
   checkHealth();
 }
@@ -821,10 +775,10 @@ function showPage(page) {
   });
 
   const titles = {
-    dashboard: ['Dashboard', 'Overview of all GTM operations agents'],
-    leads: ['Lead Intelligence', 'Research and score incoming leads automatically'],
-    emails: ['Email Triage', 'Classify and route incoming emails'],
-    meetings: ['Meeting Intelligence', 'Extract action items and generate summaries'],
+    dashboard: ['Dashboard', 'Choose a task and work with sample data'],
+    leads: ['Lead Intelligence', 'Assess interest and draft an email for review'],
+    emails: ['Email Triage', 'Classify an email and prepare a reply'],
+    meetings: ['Meeting Intelligence', 'Summarize a transcript and identify action items'],
     crm: ['CRM Hygiene', 'Scan and flag stale or incomplete deals'],
     competitors: ['Competitor Intelligence', 'Monitor competitor activity weekly'],
     hr: ['HR Onboarding', 'Natural language employee provisioning']
@@ -833,7 +787,7 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = titles[page][0];
   document.getElementById('pageSub').textContent = titles[page][1];
 
-  event.currentTarget && event.currentTarget.classList.add('active');
+
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'"+page+"'")) {
       n.classList.add('active');
@@ -845,6 +799,7 @@ async function checkHealth() {
   try {
     if (!API_URL) throw new Error('API not configured');
     const res = await fetch(API_URL + '/health');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     document.getElementById('healthStatus').textContent = data.status === 'healthy' ? '✓' : '✗';
     document.getElementById('healthStatus').style.color = data.status === 'healthy' ? 'var(--accent)' : 'var(--error)';
@@ -860,7 +815,7 @@ function showLoading(id) {
   document.getElementById(id).innerHTML = `
     <div class="loading">
       <div class="spinner"></div>
-      Agent is processing your request...
+      Working on it… A sleeping service may take a minute to wake up.
     </div>`;
 }
 
