@@ -30,6 +30,19 @@ def test_migrations_and_tenant_relations_on_postgres():
             assert await conn.fetchval('SELECT count(*) FROM workspace_contacts') == 0
             await conn.execute('INSERT INTO workspace_contacts(organization_id, id, account_id, name) VALUES ($1, $2, $3, $4)', first, contact, account, 'Contact')
             assert await conn.fetchval('SELECT count(*) FROM workspace_contacts') == 1
+            from workspace_security.authorization import AccessDenied, Permission, require_membership
+            from workspace_security.identity import VerifiedIdentity
+
+            user = uuid4()
+            await conn.execute('INSERT INTO workspace_users(id, identity_issuer, identity_subject) VALUES ($1, $2, $3)', user, 'https://id.example/', 'user-1')
+            await conn.execute('INSERT INTO workspace_memberships(organization_id, user_id, role) VALUES ($1, $2, $3)', first, user, 'viewer')
+            identity = VerifiedIdentity('https://id.example/', 'user-1')
+            async with conn.transaction():
+                assert await require_membership(conn, identity, first, Permission.READ) == 'viewer'
+                with pytest.raises(AccessDenied):
+                    await require_membership(conn, identity, first, Permission.WRITE)
+                with pytest.raises(AccessDenied):
+                    await require_membership(conn, identity, second, Permission.READ)
         finally:
             try:
                 await conn.execute('SET search_path TO public')

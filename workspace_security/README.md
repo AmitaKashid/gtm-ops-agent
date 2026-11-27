@@ -15,6 +15,10 @@ Authorization must look up the verified identity and current organization
 membership server-side on every relevant request. Never trust a role or
 organization solely supplied by a caller. Use HTTPS; do not log tokens.
 
+`require_membership` implements a database membership lookup and role checks
+for future callers. It requires an existing transaction; the caller must keep
+the protected operation in that same transaction. No routes use it yet.
+
 This is a development foundation, not a production-ready login system. No
 provider is configured and there is no browser login, onboarding, account
 lifecycle, or organization isolation until subsequent changes are implemented
