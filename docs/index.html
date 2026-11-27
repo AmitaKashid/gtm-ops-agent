@@ -799,7 +799,9 @@
 
 <script src="api-config.js"></script>
 <script>
-let API_URL = window.GTM_API_URL || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8010' : '');
+let API_URL = location.hostname.endsWith('.onrender.com')
+  ? location.origin
+  : window.GTM_API_URL || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8010' : '');
 
 function setApiUrl() {
   API_URL = document.getElementById('apiUrlInput').value.trim().replace(/\/$/, '');

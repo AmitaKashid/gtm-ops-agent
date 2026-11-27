@@ -31,6 +31,8 @@ not included.
    - `GROQ_API_KEY`: enter your own key privately in Render.
 3. Deploy, then open the service's HTTPS address with `/health` appended.
    Startup can take time on the free tier. Check Render logs for errors.
+   The same service address without `/health` serves the dashboard and
+   connects to the API at that address automatically.
 4. Set `window.GTM_API_URL` in `docs/api-config.js` to your actual Render
    HTTPS address, without a trailing slash. Optionally match
    `dashboard/api-config.js` for local dashboard use. Commit and push both.

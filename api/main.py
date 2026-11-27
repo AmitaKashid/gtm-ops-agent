@@ -1,11 +1,13 @@
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 load_dotenv()
 
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from api.middleware.logging import RequestLoggingMiddleware
 from api.middleware.public_demo import PublicDemoMiddleware
 from api.routers import crm, leads, emails, meetings, competitors, hr_onboarding
@@ -40,6 +42,19 @@ app.include_router(emails.router)
 app.include_router(meetings.router)
 app.include_router(competitors.router)
 app.include_router(hr_onboarding.router)
+
+_DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "docs"
+
+
+@app.get("/", include_in_schema=False)
+async def dashboard():
+    """Serve the dashboard at the backend's own address."""
+    return FileResponse(_DASHBOARD_DIR / "index.html")
+
+
+@app.get("/api-config.js", include_in_schema=False)
+async def dashboard_config():
+    return FileResponse(_DASHBOARD_DIR / "api-config.js", media_type="text/javascript")
 
 
 class HealthResponse(BaseModel):
