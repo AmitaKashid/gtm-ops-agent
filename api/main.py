@@ -4,7 +4,7 @@ from pathlib import Path
 
 load_dotenv()
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -45,6 +45,29 @@ app.include_router(hr_onboarding.router)
 app.include_router(workspace.router)
 
 _DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "docs"
+_WORKSPACE_UI_DIR = Path(__file__).resolve().parent.parent / "workspace_ui"
+
+
+def local_workspace_ui_enabled():
+    return (
+        os.getenv('APP_ENV', '').lower() == 'development'
+        and os.getenv('WORKSPACE_ENABLED', '').lower() == 'true'
+        and os.getenv('PUBLIC_DEMO', '').lower() != 'true'
+    )
+
+
+@app.get('/workspace-app', include_in_schema=False)
+async def workspace_dashboard():
+    if not local_workspace_ui_enabled():
+        raise HTTPException(status_code=404, detail='Not found')
+    return FileResponse(_WORKSPACE_UI_DIR / 'index.html')
+
+
+@app.get('/workspace-app.js', include_in_schema=False)
+async def workspace_dashboard_script():
+    if not local_workspace_ui_enabled():
+        raise HTTPException(status_code=404, detail='Not found')
+    return FileResponse(_WORKSPACE_UI_DIR / 'app.js', media_type='text/javascript')
 
 
 @app.get("/", include_in_schema=False)
