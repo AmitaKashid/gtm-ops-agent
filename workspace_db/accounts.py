@@ -12,6 +12,7 @@ from workspace_security.identity import VerifiedIdentity
 async def list_accounts(connection, identity: VerifiedIdentity, organization_id: UUID):
     async with connection.transaction():
         await require_membership(connection, identity, organization_id, Permission.READ)
+        await connection.execute("SELECT set_config('app.organization_id', $1, true)", str(organization_id))
         rows = await connection.fetch('''
             SELECT id, name, created_at FROM workspace_accounts
             WHERE organization_id = $1 ORDER BY created_at DESC, id DESC LIMIT 100
@@ -25,6 +26,7 @@ async def create_account(connection, identity: VerifiedIdentity, organization_id
     name = name.strip()
     async with connection.transaction():
         await require_membership(connection, identity, organization_id, Permission.WRITE)
+        await connection.execute("SELECT set_config('app.organization_id', $1, true)", str(organization_id))
         actor = await connection.fetchval('''
             SELECT id FROM workspace_users WHERE identity_issuer = $1 AND identity_subject = $2
         ''', identity.issuer, identity.subject)

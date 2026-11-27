@@ -143,3 +143,44 @@ def test_local_bootstrap_is_idempotent_and_organization_discovery_is_scoped():
             finally:
                 await conn.close()
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not os.getenv('TEST_DATABASE_URL'), reason='TEST_DATABASE_URL not set')
+def test_row_security_with_non_bypass_role():
+    async def run():
+        conn = await asyncpg.connect(os.environ['TEST_DATABASE_URL'])
+        suffix = uuid4().hex
+        schema, role = 'workspace_test_' + suffix, 'workspace_role_' + suffix
+        created_role = False
+        try:
+            await conn.execute(f'CREATE SCHEMA "{schema}"')
+            await conn.execute("SELECT set_config('search_path', $1, false)", schema)
+            await apply_migrations(conn, load_migrations())
+            first, second = uuid4(), uuid4()
+            await conn.execute('INSERT INTO workspace_organizations (id, name) VALUES ($1, $2), ($3, $4)', first, 'First', second, 'Second')
+            await conn.execute('INSERT INTO workspace_accounts (organization_id, id, name) VALUES ($1, $2, $3), ($4, $5, $6)', first, uuid4(), 'First account', second, uuid4(), 'Second account')
+            await conn.execute(f'CREATE ROLE "{role}" NOLOGIN NOSUPERUSER NOBYPASSRLS')
+            created_role = True
+            await conn.execute(f'GRANT USAGE ON SCHEMA "{schema}" TO "{role}"')
+            await conn.execute(f'GRANT SELECT, INSERT ON workspace_accounts TO "{role}"')
+            await conn.execute(f'SET ROLE "{role}"')
+            assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 0
+            async with conn.transaction():
+                await conn.execute("SELECT set_config('app.organization_id', $1, true)", str(first))
+                assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 1
+                assert await conn.fetchval('SELECT name FROM workspace_accounts') == 'First account'
+            assert await conn.fetchval('SELECT count(*) FROM workspace_accounts') == 0
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                async with conn.transaction():
+                    await conn.execute("SELECT set_config('app.organization_id', $1, true)", str(first))
+                    await conn.execute('INSERT INTO workspace_accounts (organization_id, id, name) VALUES ($1, $2, $3)', second, uuid4(), 'Wrong tenant')
+        finally:
+            try:
+                await conn.execute('RESET ROLE')
+                await conn.execute('SET search_path TO public')
+                await conn.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+                if created_role:
+                    await conn.execute(f'DROP ROLE "{role}"')
+            finally:
+                await conn.close()
+    asyncio.run(run())

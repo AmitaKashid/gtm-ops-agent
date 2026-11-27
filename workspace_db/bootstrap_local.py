@@ -39,6 +39,7 @@ async def bootstrap(connection, organization_id, name, issuer, subject):
             if existing:
                 raise RuntimeError('Organization already has members; bootstrap cannot add another owner')
             await connection.execute("INSERT INTO workspace_memberships (organization_id, user_id, role) VALUES ($1, $2, 'owner')", organization_id, user)
+            await connection.execute("SELECT set_config('app.organization_id', $1, true)", str(organization_id))
             await connection.execute('''INSERT INTO workspace_audit_events
                 (organization_id, id, actor_id, action, object_type, object_id)
                 VALUES ($1, $2, $3, 'workspace.bootstrap', 'organization', $1)''', organization_id, uuid4(), user)
