@@ -23,3 +23,20 @@ This is a development foundation, not a production-ready login system. No
 provider is configured and there is no browser login, onboarding, account
 lifecycle, or organization isolation until subsequent changes are implemented
 and tested against PostgreSQL.
+
+## Protected account API (opt-in development only)
+
+The `/workspace/organizations/{organization_id}/accounts` GET and POST
+routes are unavailable unless `WORKSPACE_ENABLED=true` and `PUBLIC_DEMO` is
+not `true`. They require an RS256 bearer access token and a matching database
+membership. Configure `WORKSPACE_OIDC_ISSUER`, `WORKSPACE_OIDC_AUDIENCE`,
+`WORKSPACE_OIDC_JWKS_URL` and `WORKSPACE_DATABASE_URL` privately. The issuer
+and JWKS endpoint currently require HTTPS. Browser cross-origin requests must
+also be explicitly allowed in `CORS_ALLOWED_ORIGINS`.
+
+There is no browser login, user provisioning flow, or identity provider setup
+in this patch. The previous unprotected demo routes remain separate and are
+not tenant-aware. Do not set `WORKSPACE_ENABLED` on the public demo or put
+real customer data into it. Further work is required for a production identity
+provider, token semantics and revocation, database permissions/row security,
+backups, and operational controls.

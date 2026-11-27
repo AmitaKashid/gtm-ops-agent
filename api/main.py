@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from api.middleware.logging import RequestLoggingMiddleware
 from api.middleware.public_demo import PublicDemoMiddleware
-from api.routers import crm, leads, emails, meetings, competitors, hr_onboarding
+from api.routers import crm, leads, emails, meetings, competitors, hr_onboarding, workspace
 
 
 app = FastAPI(
@@ -31,7 +31,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins(),
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 app.add_middleware(RequestLoggingMiddleware)
@@ -42,6 +42,7 @@ app.include_router(emails.router)
 app.include_router(meetings.router)
 app.include_router(competitors.router)
 app.include_router(hr_onboarding.router)
+app.include_router(workspace.router)
 
 _DASHBOARD_DIR = Path(__file__).resolve().parent.parent / "docs"
 
