@@ -5,6 +5,8 @@ const clientId = 'gtm-workspace-web';
 const redirectUri = 'http://127.0.0.1:8010/workspace-app';
 let accessToken = null;
 let organizations = [];
+let sessionVersion = 0;
+let accountRequestVersion = 0;
 const $ = id => document.getElementById(id);
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 function message(text, error = false) { const box = $('message'); box.textContent = text; box.classList.toggle('error', error); }
@@ -38,7 +40,9 @@ async function finishSignIn() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(path, {...options, headers:{...options.headers, Authorization:'Bearer ' + accessToken}});
+  const token = accessToken;
+  const response = await fetch(path, {...options, headers:{...options.headers, Authorization:'Bearer ' + token}});
+  if (token !== accessToken) throw new Error('Your workspace session changed.');
   if (response.status === 401) { accessToken = null; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; throw new Error('Your session has expired. Please sign in again.'); }
   if (response.status === 403) throw new Error('You do not have permission for this action.');
   if (!response.ok) throw new Error('The workspace could not complete your request. Try again.');
@@ -48,12 +52,14 @@ async function api(path, options = {}) {
 async function loadAccounts() {
   const organization = $('organization').value;
   if (!organization) return;
+  const requestVersion = ++accountRequestVersion, currentSession = sessionVersion;
   $('account-status').textContent = 'Loading…';
   const accounts = await api('/workspace/organizations/' + encodeURIComponent(organization) + '/accounts');
+  if (requestVersion !== accountRequestVersion || currentSession !== sessionVersion || organization !== $('organization').value) return;
   const container = $('account-list'); container.replaceChildren();
-  if (!accounts.length) { container.className = 'empty'; container.textContent = 'No accounts yet. Add a fictional company to get started.'; }
+  if (!accounts.length) { container.className = 'table-wrap empty'; container.textContent = 'No accounts yet. Add a fictional company to get started.'; }
   else {
-    container.className = '';
+    container.className = 'table-wrap';
     const table = document.createElement('table'), head = document.createElement('thead'), tr = document.createElement('tr'), th = document.createElement('th'), body = document.createElement('tbody');
     th.textContent = 'Account name'; tr.append(th); head.append(tr); table.append(head);
     for (const account of accounts) { const row = document.createElement('tr'), cell = document.createElement('td'); cell.textContent = account.name; row.append(cell); body.append(row); }
@@ -66,7 +72,10 @@ async function loadAccounts() {
 }
 
 async function loadWorkspace() {
-  organizations = await api('/workspace/organizations');
+  const currentSession = sessionVersion;
+  const result = await api('/workspace/organizations');
+  if (currentSession !== sessionVersion) return;
+  organizations = result;
   const select = $('organization'); select.replaceChildren();
   for (const org of organizations) { const option = document.createElement('option'); option.value = org.id; option.textContent = org.name; select.append(option); }
   $('sign-in').hidden = true; $('sign-out').hidden = false;
@@ -76,7 +85,7 @@ async function loadWorkspace() {
 }
 
 $('sign-in').addEventListener('click', () => signIn().catch(() => message('Could not start sign-in. Check Keycloak and try again.', true)));
-$('sign-out').addEventListener('click', () => { accessToken = null; organizations = []; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
+$('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('account-status').textContent = ''; $('account-name').value = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
 $('organization').addEventListener('change', () => loadAccounts().catch(err => message(err.message, true)));
 $('account-form').addEventListener('submit', async event => {
   event.preventDefault(); const input = $('account-name'), name = input.value.trim();

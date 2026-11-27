@@ -40,3 +40,5 @@ jobs:
         run: cmp docs/index.html dashboard/index.html
       - name: Check dashboard behavior
         run: node tests/dashboard-smoke.cjs
+      - name: Check workspace interface behavior
+        run: node tests/workspace-ui-smoke.cjs
