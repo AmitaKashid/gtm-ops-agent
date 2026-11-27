@@ -484,6 +484,7 @@
   .task-card strong { font-size:15px; } .task-card span:not(.task-icon) { color:#9eafbf; font-size:13px; line-height:1.5; }
   .task-card small { color:#77cbb6; font-size:10px; font-weight:700; letter-spacing:.06em; margin-top:auto; }
   .task-icon { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:#173b39; color:#8ae2c9; font-size:20px; }
+  .form-note { color:#aab6c5; font-size:13px; line-height:1.5; margin-bottom:20px; }
   .availability-note { margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; color:#aab6c5; font-size:13px; }
   .availability-note strong { color:#e4ebee; }
   .connection-settings { position:relative; color:var(--text-muted); font-size:12px; }
@@ -599,6 +600,7 @@
     <div class="page" id="page-leads">
       <div class="card">
         <div class="card-title">🎯 Analyze New Lead</div>
+        <p class="form-note">The model generates this assessment without verified web research. Review all facts and use fictional details.</p>
         <div class="grid-2">
           <div>
             <div class="form-group">
@@ -639,6 +641,7 @@
     <div class="page" id="page-emails">
       <div class="card">
         <div class="card-title">📧 Triage Incoming Email</div>
+        <p class="form-note">Paste a fictional email. Replies are drafts and are not sent.</p>
         <div class="grid-2">
           <div>
             <div class="form-group">
@@ -670,6 +673,7 @@
     <div class="page" id="page-meetings">
       <div class="card">
         <div class="card-title">🗓 Analyze Meeting</div>
+        <p class="form-note">Use a fictional transcript. This workflow does not create external tasks.</p>
         <div class="grid-2">
           <div>
             <div class="form-group">

@@ -22,3 +22,5 @@ jobs:
         run: python -m pytest tests -q
       - name: Check dashboard copies
         run: cmp docs/index.html dashboard/index.html
+      - name: Check dashboard behavior
+        run: node tests/dashboard-smoke.cjs
