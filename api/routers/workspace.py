@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import os
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -15,9 +15,11 @@ from workspace_db.accounts import create_account, list_accounts
 from workspace_db.connection import DatabaseConfigurationError, prepare_database_url
 from workspace_db.organizations import list_organizations
 from workspace_security.authorization import AccessDenied
+from workspace_security.authorization import Permission, require_membership
 from workspace_security.database_guard import UnsafeDatabaseRole, require_safe_database_role
 from workspace_security.identity import IdentitySettings, InvalidAccessToken, verify_access_token
 from workspace_security.rate_limit import RateLimitConfigurationError, configured_limit, consume_workspace_request
+from api.routers.crm import CRMRequest, CRMResponse, DealInput, analyze_crm
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix='/workspace', tags=['Workspace'])
@@ -112,3 +114,29 @@ async def add_account(organization_id: UUID, body: AccountCreate, identity=Depen
         raise HTTPException(status_code=403, detail='Access denied') from None
     except ValueError:
         raise HTTPException(status_code=422, detail='Account name must contain 1 to 255 characters') from None
+
+
+@router.post('/organizations/{organization_id}/crm/sample-scan', response_model=CRMResponse)
+async def scan_sample_crm(organization_id: UUID, identity=Depends(workspace_identity), conn=Depends(workspace_connection)):
+    """Run a deterministic scan on fictional data after checking membership.
+
+    This endpoint does not read an organization's CRM or send notifications.
+    It accepts no deal data and does not persist the results.
+    """
+    today = date.today()
+    old = (today - timedelta(days=61)).isoformat()
+    request = CRMRequest(scan_date=today.isoformat(), deals=[DealInput(
+        deal_id='SAMPLE-001', deal_name='Example subscription', company='Example Company',
+        owner='Sample owner', stage='Proposal', deal_value=10000,
+        contact_email='sample@example.com', contact_phone=None,
+        last_contact_date=old, stage_changed_date=old,
+    )])
+    try:
+        async with conn.transaction():
+            await require_membership(conn, identity, organization_id, Permission.READ)
+            return await analyze_crm(request)
+    except AccessDenied:
+        raise HTTPException(status_code=403, detail='Access denied') from None
+    except HTTPException:
+        logger.error('Workspace sample CRM scan failed')
+        raise HTTPException(status_code=500, detail='CRM scan failed') from None

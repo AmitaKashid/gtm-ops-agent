@@ -15,6 +15,7 @@ let accessToken = null;
 let organizations = [];
 let sessionVersion = 0;
 let accountRequestVersion = 0;
+let crmRequestVersion = 0;
 const $ = id => document.getElementById(id);
 const b64 = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 function message(text, error = false) { const box = $('message'); box.textContent = text; box.classList.toggle('error', error); }
@@ -94,8 +95,22 @@ async function loadWorkspace() {
 }
 
 $('sign-in').addEventListener('click', () => signIn().catch(() => message('Could not start sign-in. Check the workspace configuration and try again.', true)));
-$('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('account-status').textContent = ''; $('account-name').value = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
-$('organization').addEventListener('change', () => loadAccounts().catch(err => message(err.message, true)));
+$('sign-out').addEventListener('click', () => { sessionVersion++; accountRequestVersion++; crmRequestVersion++; accessToken = null; organizations = []; $('organization').replaceChildren(); $('account-list').replaceChildren(); $('account-status').textContent = ''; $('account-name').value = ''; $('crm-result').textContent = ''; $('workspace').hidden = true; $('sign-in').hidden = false; $('sign-out').hidden = true; message('Signed out of this workspace. Your identity-provider session may still be active.'); });
+$('organization').addEventListener('change', () => { crmRequestVersion++; $('crm-result').textContent = ''; loadAccounts().catch(err => message(err.message, true)); });
+$('crm-scan').addEventListener('click', async () => {
+  const organization = $('organization').value, currentSession = sessionVersion, requestVersion = ++crmRequestVersion;
+  if (!organization || !accessToken) return;
+  const button = $('crm-scan'); button.disabled = true;
+  $('crm-result').textContent = 'Running sample scan…';
+  try {
+    const result = await api('/workspace/organizations/' + encodeURIComponent(organization) + '/crm/sample-scan', {method:'POST'});
+    if (currentSession !== sessionVersion || requestVersion !== crmRequestVersion || organization !== $('organization').value) return;
+    if (!result.completed || result.error) throw new Error('The sample scan could not be completed.');
+    $('crm-result').textContent = `Scanned ${result.total_deals_count} sample deal(s). ${result.problematic_deals_count} need attention; ${result.total_alerts_count} issues found. No notifications sent.`;
+  } catch (err) {
+    if (currentSession === sessionVersion && requestVersion === crmRequestVersion && organization === $('organization').value) $('crm-result').textContent = 'The sample scan could not be completed. Try again.';
+  } finally { button.disabled = false; }
+});
 $('account-form').addEventListener('submit', async event => {
   event.preventDefault(); const input = $('account-name'), name = input.value.trim();
   if (!name) { message('Enter an account name.', true); return; }

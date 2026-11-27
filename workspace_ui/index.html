@@ -25,12 +25,14 @@
     <div class="topbar"><div class="breadcrumbs">Workspace &nbsp;/&nbsp; <strong>Accounts</strong></div><span class="env">WORKSPACE PREVIEW</span></div>
     <div class="content">
       <header class="heading"><div><div class="eyebrow">Your workspace</div><h1>Build better<br>relationships.</h1><p>Keep your accounts organized in one place.</p></div><button id="sign-in" class="button" type="button">Sign in to workspace</button><button id="sign-out" class="button secondary" type="button" hidden>Sign out</button></header>
-      <div id="message" class="banner" role="status" aria-live="polite">Sign in to view your local workspace.</div>
+      <div id="message" class="banner" role="status" aria-live="polite">Sign in to view your workspace.</div>
       <section id="workspace" hidden aria-label="Accounts workspace">
         <div class="workspace-top"><div><div class="eyebrow">Account management</div><h2>Accounts</h2><p>Review and add accounts for your organization.</p></div><label>Organization<select id="organization"></select></label></div>
         <article class="card"><div class="card-head"><div><h3>Account directory</h3><p>Visible to members of the selected organization.</p></div><span class="status" id="account-status" aria-live="polite"></span></div>
           <div class="card-body"><form id="account-form" class="form"><label for="account-name">Account name<input id="account-name" maxlength="255" required placeholder="Example company" autocomplete="off"></label><button class="button" type="submit">Add account</button></form><div id="account-list" class="table-wrap empty">No accounts yet.</div></div>
-        </article><p class="footnote">Workspace preview. Keep real customer information out of it.</p>
+        </article>
+        <article class="card" style="margin-top:24px" aria-label="CRM hygiene sample scan"><div class="card-head"><div><h3>CRM hygiene</h3><p>Explore a scan of fictional deal data. No CRM is connected and no notifications are sent.</p></div></div><div class="card-body"><button id="crm-scan" class="button secondary" type="button">Run sample scan</button><p id="crm-result" role="status" aria-live="polite"></p></div></article>
+        <p class="footnote">Workspace preview. Keep real customer information out of it.</p>
       </section>
     </div>
   </main>
