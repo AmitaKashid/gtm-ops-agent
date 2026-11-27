@@ -2,7 +2,7 @@
 services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.8.2
-    command: start-dev
+    command: start-dev --import-realm
     ports:
       - '127.0.0.1:8088:8080'
     environment:
@@ -10,6 +10,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD privately}
     volumes:
       - keycloak_dev_data:/opt/keycloak/data
+      - ./keycloak/realm-gtm-dev.json:/opt/keycloak/data/import/realm-gtm-dev.json:ro
 
 volumes:
   keycloak_dev_data:
