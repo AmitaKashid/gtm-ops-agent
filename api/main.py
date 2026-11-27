@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from api.middleware.logging import RequestLoggingMiddleware
+from api.middleware.public_demo import PublicDemoMiddleware
 from api.routers import crm, leads, emails, meetings, competitors, hr_onboarding
 
 
@@ -21,6 +22,8 @@ def allowed_origins() -> list[str]:
     configured = os.getenv("CORS_ALLOWED_ORIGINS", "http://127.0.0.1:8080,http://localhost:8080")
     return [origin.strip() for origin in configured.split(",") if origin.strip()]
 
+
+app.add_middleware(PublicDemoMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

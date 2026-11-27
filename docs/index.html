@@ -481,7 +481,7 @@
     </div>
     <div class="status-badge">
       <div class="status-dot"></div>
-      Local development
+      <span id="apiStatus">Checking API...</span>
     </div>
   </div>
 
@@ -534,7 +534,7 @@
       <div class="page-sub" id="pageSub">Overview of all GTM operations agents</div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
-      <input type="text" id="apiUrlInput" placeholder="API URL" style="width:360px;padding:8px 14px;font-size:12px;font-family:'DM Mono',monospace;" value="http://127.0.0.1:8010">
+      <input type="text" id="apiUrlInput" placeholder="API URL" style="width:360px;padding:8px 14px;font-size:12px;font-family:'DM Mono',monospace;" value="">
       <button class="btn btn-secondary" onclick="setApiUrl()" style="padding:8px 16px;font-size:12px;">Set URL</button>
     </div>
   </div>
@@ -797,8 +797,9 @@
   </div>
 </main>
 
+<script src="api-config.js"></script>
 <script>
-let API_URL = 'http://127.0.0.1:8010';
+let API_URL = window.GTM_API_URL || (location.hostname === 'localhost' || location.hostname === '127.0.0.1' ? 'http://127.0.0.1:8010' : '');
 
 function setApiUrl() {
   API_URL = document.getElementById('apiUrlInput').value.trim().replace(/\/$/, '');
@@ -840,11 +841,14 @@ function showPage(page) {
 
 async function checkHealth() {
   try {
+    if (!API_URL) throw new Error('API not configured');
     const res = await fetch(API_URL + '/health');
     const data = await res.json();
     document.getElementById('healthStatus').textContent = data.status === 'healthy' ? '✓' : '✗';
     document.getElementById('healthStatus').style.color = data.status === 'healthy' ? 'var(--accent)' : 'var(--error)';
+    document.getElementById('apiStatus').textContent = data.status === 'healthy' ? 'API reachable' : 'API unavailable';
   } catch(e) {
+    document.getElementById('apiStatus').textContent = API_URL ? 'API unavailable' : 'API not configured';
     document.getElementById('healthStatus').textContent = '✗';
     document.getElementById('healthStatus').style.color = 'var(--error)';
   }
@@ -866,15 +870,22 @@ function showError(id, msg) {
   container.replaceChildren(error);
 }
 
+function escapeValues(value) {
+  if (typeof value === 'string') return value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  if (Array.isArray(value)) return value.map(escapeValues);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, escapeValues(v)]));
+  return value;
+}
+
 async function readResponse(response) {
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(`API returned HTTP ${response.status}.`);
+    throw new Error(typeof data.detail === 'string' ? data.detail : `API returned HTTP ${response.status}.`);
   }
   if (data.error) {
     throw new Error(`Workflow error: ${data.error}`);
   }
-  return data;
+  return escapeValues(data);
 }
 
 function describeError(error) {
@@ -1129,7 +1140,8 @@ async function submitHROnboarding() {
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('apiUrlDisplay').textContent = API_URL;
+  document.getElementById('apiUrlInput').value = API_URL;
+  document.getElementById('apiUrlDisplay').textContent = API_URL || 'Not configured';
   checkHealth();
   // Auto-fill today's date
   const today = new Date().toISOString().split('T')[0];
