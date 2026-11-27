@@ -1,0 +1,27 @@
+# Workspace database foundation
+
+This is an additive schema for future workspace features. The existing demo
+continues to use its legacy tables. These tables are not connected to any
+route, and their presence does not provide authentication or tenant isolation.
+Application authorization and database policies must be implemented and
+independently verified before storing real customer data.
+
+## Local migration
+
+Start the existing development PostgreSQL service with Docker Compose. In a
+Windows Command Prompt, set the URL explicitly for this shell and run:
+
+```cmd
+docker compose up -d postgres
+set "DATABASE_URL=postgresql://gtmuser:gtmpassword@127.0.0.1:5432/gtmops"
+.venv\Scripts\python.exe -m workspace_db.migrate
+```
+
+Run the command a second time to check that it is idempotent. It uses a
+transaction and a PostgreSQL advisory lock; each migration's SHA-256 checksum
+is stored and checked. Never edit an applied SQL file; add a new version.
+The sample credentials above are for local development only. Back up any
+existing database and verify recovery before applying migrations there.
+
+No frontend, authentication, audit capture, database backup, or storage for
+external credentials is implemented by this foundation alone.
