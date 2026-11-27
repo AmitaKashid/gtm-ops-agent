@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from workspace_db.accounts import create_account, list_accounts
 from workspace_db.organizations import list_organizations
 from workspace_security.authorization import AccessDenied
+from workspace_security.database_guard import UnsafeDatabaseRole, require_safe_database_role
 from workspace_security.identity import IdentitySettings, InvalidAccessToken, verify_access_token
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,14 @@ async def workspace_connection(identity=Depends(workspace_identity)):
         logger.error('Workspace database connection failed')
         raise HTTPException(status_code=503, detail='Workspace database unavailable') from None
     try:
+        require_guard = (os.getenv('APP_ENV', '').lower() != 'development' or
+                         os.getenv('WORKSPACE_REQUIRE_DB_RLS', '').lower() == 'true')
+        if require_guard:
+            try:
+                await require_safe_database_role(conn)
+            except (UnsafeDatabaseRole, asyncpg.PostgresError):
+                logger.error('Workspace database security check failed')
+                raise HTTPException(status_code=503, detail='Workspace database security is not configured') from None
         yield conn
     finally:
         await conn.close()
