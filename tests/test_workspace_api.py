@@ -108,7 +108,7 @@ def test_production_rejects_unsafe_database_role(app, token_setup, monkeypatch):
         return conn
     monkeypatch.setattr(workspace.asyncpg, 'connect', connect)
     monkeypatch.setenv('APP_ENV', 'production')
-    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test')
+    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test?sslmode=verify-full')
     response = TestClient(app).get(
         f'/workspace/organizations/{uuid4()}/accounts',
         headers={'Authorization': 'Bearer ' + token_setup()},
@@ -198,7 +198,7 @@ def test_authenticated_hosted_workspace_rate_limit_returns_429(app, token_setup,
     async def denied(connection, identity, limit):
         return False
     monkeypatch.setenv('APP_ENV', 'production')
-    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test')
+    monkeypatch.setenv('WORKSPACE_DATABASE_URL', 'postgresql://example.invalid/test?sslmode=verify-full')
     monkeypatch.setattr(workspace.asyncpg, 'connect', connect)
     monkeypatch.setattr(workspace, 'require_safe_database_role', safe_role)
     monkeypatch.setattr(workspace, 'consume_workspace_request', denied)

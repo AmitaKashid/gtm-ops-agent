@@ -8,6 +8,9 @@ import argparse
 import asyncio
 import os
 import re
+from urllib.parse import urlsplit
+
+from workspace_db.connection import prepare_database_url
 
 
 async def grant_runtime(connection, role):
@@ -40,7 +43,9 @@ async def main():
     if not url:
         raise RuntimeError('Set WORKSPACE_ADMIN_DATABASE_URL to an owner connection privately')
     import asyncpg
-    connection = await asyncpg.connect(url, timeout=10)
+    host = urlsplit(url).hostname
+    dsn = prepare_database_url(url, require_verified_tls=host not in {'localhost', '127.0.0.1', '::1'})
+    connection = await asyncpg.connect(dsn, timeout=10)
     try:
         await grant_runtime(connection, args.role)
     finally:

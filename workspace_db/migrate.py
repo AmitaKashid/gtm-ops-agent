@@ -8,6 +8,9 @@ import asyncio
 import hashlib
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
+
+from workspace_db.connection import prepare_database_url
 
 MIGRATIONS = Path(__file__).parent / "migrations"
 LOCK_ID = 7198452154901
@@ -55,7 +58,9 @@ async def main():
     if not url:
         raise RuntimeError("DATABASE_URL must be set explicitly")
     import asyncpg
-    connection = await asyncpg.connect(url)
+    host = urlsplit(url).hostname
+    dsn = prepare_database_url(url, require_verified_tls=host not in {'localhost', '127.0.0.1', '::1'})
+    connection = await asyncpg.connect(dsn, timeout=10)
     try:
         await apply_migrations(connection, load_migrations())
     finally:

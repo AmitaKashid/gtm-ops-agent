@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlsplit
 from uuid import UUID
 
 from workspace_db.bootstrap_local import bootstrap
+from workspace_db.connection import prepare_database_url
 
 
 def validate_hosted_config(database_url, issuer):
@@ -33,7 +34,7 @@ async def main():
     url = os.environ.get('WORKSPACE_ADMIN_DATABASE_URL', '')
     validate_hosted_config(url, args.issuer)
     import asyncpg
-    connection = await asyncpg.connect(url, timeout=10)
+    connection = await asyncpg.connect(prepare_database_url(url, require_verified_tls=True), timeout=10)
     try:
         await bootstrap(connection, args.organization_id, args.name, args.issuer, args.subject)
     finally:

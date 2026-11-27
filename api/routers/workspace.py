@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from workspace_db.accounts import create_account, list_accounts
+from workspace_db.connection import DatabaseConfigurationError, prepare_database_url
 from workspace_db.organizations import list_organizations
 from workspace_security.authorization import AccessDenied
 from workspace_security.database_guard import UnsafeDatabaseRole, require_safe_database_role
@@ -48,8 +49,9 @@ async def workspace_connection(identity=Depends(workspace_identity)):
     if not url:
         raise HTTPException(status_code=503, detail='Workspace database is not configured')
     try:
-        conn = await asyncpg.connect(url, timeout=5)
-    except (OSError, asyncpg.PostgresError, TimeoutError):
+        dsn = prepare_database_url(url, require_verified_tls=os.getenv('APP_ENV', '').lower() != 'development')
+        conn = await asyncpg.connect(dsn, timeout=10)
+    except (OSError, asyncpg.PostgresError, TimeoutError, DatabaseConfigurationError):
         logger.error('Workspace database connection failed')
         raise HTTPException(status_code=503, detail='Workspace database unavailable') from None
     try:
