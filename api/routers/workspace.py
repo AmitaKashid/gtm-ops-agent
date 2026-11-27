@@ -12,6 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from workspace_db.accounts import create_account, list_accounts
+from workspace_db.organizations import list_organizations
 from workspace_security.authorization import AccessDenied
 from workspace_security.identity import IdentitySettings, InvalidAccessToken, verify_access_token
 
@@ -63,6 +64,17 @@ class Account(BaseModel):
     id: UUID
     name: str
     created_at: datetime
+
+
+class Organization(BaseModel):
+    id: UUID
+    name: str
+    role: str
+
+
+@router.get('/organizations', response_model=list[Organization])
+async def read_organizations(identity=Depends(workspace_identity), conn=Depends(workspace_connection)):
+    return await list_organizations(conn, identity)
 
 
 @router.get('/organizations/{organization_id}/accounts', response_model=list[Account])

@@ -111,3 +111,35 @@ def test_accounts_are_scoped_and_writes_are_audited():
             finally:
                 await conn.close()
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not os.getenv('TEST_DATABASE_URL'), reason='TEST_DATABASE_URL not set')
+def test_local_bootstrap_is_idempotent_and_organization_discovery_is_scoped():
+    from workspace_db.bootstrap_local import bootstrap
+    from workspace_db.organizations import list_organizations
+    from workspace_security.identity import VerifiedIdentity
+
+    async def run():
+        conn = await asyncpg.connect(os.environ['TEST_DATABASE_URL'])
+        schema = 'workspace_test_' + uuid4().hex
+        try:
+            await conn.execute(f'CREATE SCHEMA "{schema}"')
+            await conn.execute("SELECT set_config('search_path', $1, false)", schema)
+            await apply_migrations(conn, load_migrations())
+            first, second = uuid4(), uuid4()
+            await bootstrap(conn, first, 'First', 'issuer', 'first-user')
+            await bootstrap(conn, first, 'First', 'issuer', 'first-user')
+            await bootstrap(conn, second, 'Second', 'issuer', 'second-user')
+            results = await list_organizations(conn, VerifiedIdentity('issuer', 'first-user'))
+            assert len(results) == 1 and results[0]['id'] == first and results[0]['role'] == 'owner'
+            assert await conn.fetchval('SELECT count(*) FROM workspace_audit_events') == 2
+            with pytest.raises(RuntimeError, match='already has members'):
+                await bootstrap(conn, first, 'First', 'issuer', 'intruder')
+            assert await conn.fetchval('SELECT count(*) FROM workspace_users') == 2
+        finally:
+            try:
+                await conn.execute('SET search_path TO public')
+                await conn.execute(f'DROP SCHEMA IF EXISTS "{schema}" CASCADE')
+            finally:
+                await conn.close()
+    asyncio.run(run())
