@@ -48,3 +48,33 @@ content; do not commit or share them. Store them securely and remove old local
 copies according to your own retention requirements. File permissions differ
 by operating system. This utility does not provide encryption, offsite storage,
 a schedule, role/Keycloak backup, or production disaster recovery.
+
+## Dedicated runtime role (experimental)
+
+`python -m workspace_db.runtime_grants --role gtm_workspace_app` adds only the
+privileges currently required for organization discovery, account listing and
+creation, and audit inserts to an existing dedicated login. Create that login
+separately with a strong private password; do not reuse the migration owner.
+Set `WORKSPACE_ADMIN_DATABASE_URL` privately to the owner connection. The
+command does not create roles or remove inherited privileges. Never put the
+admin URL in the running API service. The API uses `WORKSPACE_DATABASE_URL`.
+
+For production mode, the role guard rejects schema creation, administrative
+roles, bypass/ownership, membership role changes, and update or delete of
+protected records. Existing `PUBLIC` or inherited grants may cause rejection.
+The runtime has read access to workspace organization/user/membership metadata,
+and can set the organization context itself: the checks are defense in depth,
+not a security boundary against arbitrary SQL using a stolen database password.
+The API must continue to verify identity and membership on every operation.
+Policy definitions and all possible database grants are not fully verified.
+Run the PostgreSQL integration suite against a disposable test database before
+using this setup. It creates and drops a uniquely named database and role and
+requires the test account to have CREATEDB and CREATEROLE privileges.
+
+`python -m workspace_db.bootstrap_hosted` is a manually invoked operator tool
+for creating the initial organization and owner from an existing Keycloak user
+subject. It requires a remote database URL with `sslmode=verify-full` in
+`WORKSPACE_ADMIN_DATABASE_URL` and an HTTPS identity issuer. It refuses to
+promote an existing non-owner or add another owner to an occupied organization.
+The tool does not expose an API endpoint, create Keycloak users, or implement
+member invitations. Store the admin URL only in a secure operator environment.

@@ -184,3 +184,57 @@ def test_row_security_with_non_bypass_role():
             finally:
                 await conn.close()
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not os.getenv('TEST_DATABASE_URL'), reason='TEST_DATABASE_URL not set')
+def test_runtime_login_grants_prevent_membership_escalation():
+    """Creates and removes only a random disposable database and role."""
+    from workspace_db.accounts import create_account, list_accounts
+    from workspace_db.runtime_grants import grant_runtime
+    from workspace_security.authorization import AccessDenied
+    from workspace_security.database_guard import UnsafeDatabaseRole, require_safe_database_role
+    from workspace_security.identity import VerifiedIdentity
+
+    async def run():
+        admin = await asyncpg.connect(os.environ['TEST_DATABASE_URL'])
+        suffix = uuid4().hex
+        database, role, password = 'ws_test_' + suffix, 'ws_user_' + suffix, uuid4().hex
+        db_created = role_created = False
+        owner = runtime = None
+        try:
+            await admin.execute(f'CREATE DATABASE "{database}"')
+            db_created = True
+            await admin.execute(f'CREATE ROLE "{role}" LOGIN PASSWORD \'{password}\' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS')
+            role_created = True
+            owner = await asyncpg.connect(os.environ['TEST_DATABASE_URL'], database=database)
+            await apply_migrations(owner, load_migrations())
+            org, other, user = uuid4(), uuid4(), uuid4()
+            await owner.execute('INSERT INTO workspace_organizations (id, name) VALUES ($1, $2), ($3, $4)', org, 'First', other, 'Second')
+            await owner.execute('INSERT INTO workspace_users (id, identity_issuer, identity_subject) VALUES ($1, $2, $3)', user, 'issuer', 'subject')
+            await owner.execute("INSERT INTO workspace_memberships (organization_id, user_id, role) VALUES ($1, $2, 'member')", org, user)
+            await grant_runtime(owner, role)
+            runtime = await asyncpg.connect(os.environ['TEST_DATABASE_URL'], database=database, user=role, password=password)
+            await require_safe_database_role(runtime)
+            identity = VerifiedIdentity('issuer', 'subject')
+            assert (await create_account(runtime, identity, org, 'Example'))['name'] == 'Example'
+            assert len(await list_accounts(runtime, identity, org)) == 1
+            with pytest.raises(AccessDenied):
+                await list_accounts(runtime, identity, other)
+            with pytest.raises(asyncpg.InsufficientPrivilegeError):
+                await runtime.execute("UPDATE workspace_memberships SET role = 'owner' WHERE user_id = $1", user)
+            await owner.execute(f'GRANT UPDATE (role) ON workspace_memberships TO "{role}"')
+            with pytest.raises(UnsafeDatabaseRole):
+                await require_safe_database_role(runtime)
+        finally:
+            if runtime is not None:
+                await runtime.close()
+            if owner is not None:
+                await owner.close()
+            try:
+                if db_created:
+                    await admin.execute(f'DROP DATABASE "{database}"')
+                if role_created:
+                    await admin.execute(f'DROP ROLE "{role}"')
+            finally:
+                await admin.close()
+    asyncio.run(run())

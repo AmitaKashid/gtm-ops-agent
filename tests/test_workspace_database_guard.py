@@ -7,7 +7,7 @@ from workspace_security.database_guard import PROTECTED_TABLES, UnsafeDatabaseRo
 
 class Connection:
     def __init__(self, role=None, rows=None):
-        self.role = role if role is not None else {'direct_login': True, 'can_bypass': False}
+        self.role = role if role is not None else {'direct_login': True, 'can_bypass': False, 'can_administer': False, 'can_create_in_schema': False, 'can_modify_members': False, 'can_modify_identity': False, 'can_modify_protected': False}
         self.rows = rows if rows is not None else [
             {'relname': name, 'relrowsecurity': True, 'relforcerowsecurity': True, 'can_own': False}
             for name in PROTECTED_TABLES
@@ -44,3 +44,11 @@ def test_missing_policy_or_owner_role_is_rejected(field):
 def test_missing_table_is_rejected():
     with pytest.raises(UnsafeDatabaseRole):
         asyncio.run(require_safe_database_role(Connection(rows=[])))
+
+
+@pytest.mark.parametrize('privilege', ['can_administer', 'can_create_in_schema', 'can_modify_members', 'can_modify_identity', 'can_modify_protected'])
+def test_excessive_runtime_privilege_is_rejected(privilege):
+    conn = Connection()
+    conn.role[privilege] = True
+    with pytest.raises(UnsafeDatabaseRole):
+        asyncio.run(require_safe_database_role(conn))
