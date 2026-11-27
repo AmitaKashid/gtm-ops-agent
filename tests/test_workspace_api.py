@@ -77,6 +77,22 @@ def test_authenticated_member_can_list_and_denial_is_403(app, token_setup, monke
     assert client.get(f'/workspace/organizations/{org}/accounts', headers=headers).status_code == 403
 
 
+def test_organization_discovery_requires_verified_identity(app, token_setup, monkeypatch):
+    async def fake_db():
+        yield object()
+    app.dependency_overrides[workspace.workspace_connection] = fake_db
+    seen = []
+    async def fake_list(conn, identity):
+        seen.append(identity.subject)
+        return []
+    monkeypatch.setattr(workspace, 'list_organizations', fake_list)
+    client = TestClient(app)
+    assert client.get('/workspace/organizations').status_code == 401
+    response = client.get('/workspace/organizations', headers={'Authorization': 'Bearer ' + token_setup()})
+    assert response.status_code == 200
+    assert seen == ['person']
+
+
 def test_insecure_loopback_requires_development_and_explicit_opt_in(app, token_setup, monkeypatch):
     issuer = 'http://127.0.0.1:8088/realms/gtm'
     monkeypatch.setenv('WORKSPACE_OIDC_ISSUER', issuer)

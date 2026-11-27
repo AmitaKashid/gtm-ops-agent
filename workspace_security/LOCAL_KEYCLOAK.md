@@ -11,8 +11,13 @@ bootstrap admin username and password privately in your shell. Do not commit,
 print, screenshot or share these values. Then start the standalone service:
 
 ```cmd
+set /p KEYCLOAK_ADMIN_USER=Choose local admin username:
+set /p KEYCLOAK_ADMIN_PASSWORD=Choose local admin password:
 docker compose -f docker-compose.keycloak.yml up -d
 ```
+
+Command Prompt displays typed input for `set /p`; do not share that terminal
+output. These credentials are only for this local development container.
 
 Open http://127.0.0.1:8088 and sign in to the administration console. The
 `gtm-dev` realm should be imported on first startup. If it already exists,
